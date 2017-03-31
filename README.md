@@ -13,9 +13,6 @@ If you are interested in coordinating the development of new features, please co
 ## Test status
 [![Build Status](https://travis-ci.org/cBioPortal/cbioportal.svg?branch=master)](https://travis-ci.org/cBioPortal/cbioportal)
 
-## End-to-End testing and Cross-browser testing provided by
-<img src="https://digitalscientists.com/system/images/1448/original/logo-browserstack.png" width="150" />
-
 ## Code Quality
 [![codebeat badge](https://codebeat.co/badges/0738d3c9-5ffe-4b61-80c4-abb5698d8d44)](https://codebeat.co/projects/github-com-cbioportal-cbioportal)
 
@@ -26,3 +23,7 @@ If you are interested in coordinating the development of new features, please co
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 [![Docker Automated build](https://img.shields.io/docker/automated/jrottenberg/ffmpeg.svg)](https://hub.docker.com/r/cbioportal/cbioportal/) [![Docker Pulls](https://img.shields.io/docker/pulls/cbioportal/cbioportal.svg)](https://hub.docker.com/r/cbioportal/cbioportal/) [![Docker Stars](https://img.shields.io/docker/stars/cbioportal/cbioportal.svg)](https://hub.docker.com/r/cbioportal/cbioportal/)
+
+## End-to-End testing and Cross-browser testing provided by
+<img src="https://digitalscientists.com/system/images/1448/original/logo-browserstack.png" width="150" />
+
