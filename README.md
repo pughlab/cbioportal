@@ -14,7 +14,7 @@ If you are interested in coordinating the development of new features, please co
 [![Build Status](https://travis-ci.org/cBioPortal/cbioportal.svg?branch=master)](https://travis-ci.org/cBioPortal/cbioportal)
 
 ## End-to-End testing and Cross-browser testing provided by
-<img src="https://digitalscientists.com/system/images/1448/original/logo-browserstack.png" />
+<img src="https://digitalscientists.com/system/images/1448/original/logo-browserstack.png" style="width:150px" />
 
 ## Code Quality
 [![codebeat badge](https://codebeat.co/badges/0738d3c9-5ffe-4b61-80c4-abb5698d8d44)](https://codebeat.co/projects/github-com-cbioportal-cbioportal)
