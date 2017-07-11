@@ -30,6 +30,7 @@ public class Mutation extends Alteration implements Serializable {
     private Integer oncotatorProteinPosStart;
     private Integer oncotatorProteinPosEnd;
     private String keyword;
+    private String chr;
     
     public String getCenter() {
         return center;
@@ -229,5 +230,19 @@ public class Mutation extends Alteration implements Serializable {
 
     public void setKeyword(String keyword) {
         this.keyword = keyword;
+    }
+    
+    public String getChr() {
+        if (chr.equals("23")) {
+            return "X";
+        } else if (chr.equals(("24"))) {
+            return "Y";
+        } else {
+            return chr;
+        }
+    }
+    
+    public void setChr(String chr) {
+        this.chr = chr;
     }
 }

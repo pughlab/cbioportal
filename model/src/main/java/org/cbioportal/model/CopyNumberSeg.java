@@ -7,6 +7,7 @@ public class CopyNumberSeg implements Serializable {
 
     private Integer segId;
     private Integer cancerStudyId;
+    private String geneticProfileId;
     private String cancerStudyIdentifier;
     private Integer sampleId;
     private String sampleStableId;
@@ -31,7 +32,15 @@ public class CopyNumberSeg implements Serializable {
     public void setCancerStudyId(Integer cancerStudyId) {
         this.cancerStudyId = cancerStudyId;
     }
+    
+    public String getGeneticProfileId() {
+        return geneticProfileId;
+    }
 
+    public void setGeneticProfileId(String geneticProfileId) {
+        this.geneticProfileId = geneticProfileId;
+    }
+    
     public String getCancerStudyIdentifier() {
         return cancerStudyIdentifier;
     }

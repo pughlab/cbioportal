@@ -11,7 +11,7 @@
         cna_event.ALTERATION AS alteration
         <if test="projection == 'DETAILED'">
             ,
-            <include refid="org.cbioportal.persistence.mybatis.GeneMapper.select">
+            <include refid="org.cbioportal.persistence.mybatis.GeneMapper.selectRefGene">
                 <property name="prefix" value="gene."/>
             </include>
         </if>
@@ -78,6 +78,7 @@
         <include refid="from"/>
         <if test="projection == 'DETAILED'">
             INNER JOIN gene ON cna_event.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
+            INNER JOIN reference_genome_gene on reference_genome_gene.reference_genome_id = genetic_profile.REFERENCE_GENOME_ID AND gene.ENTREZ_GENE_ID = reference_genome_gene.entrez_gene_id
         </if>
         <include refid="whereBySampleListId"/>
     </select>
@@ -95,6 +96,7 @@
         <include refid="from"/>
         <if test="projection == 'DETAILED'">
             INNER JOIN gene ON cna_event.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
+            INNER JOIN reference_genome_gene on reference_genome_gene.reference_genome_id = genetic_profile.REFERENCE_GENOME_ID AND gene.ENTREZ_GENE_ID = reference_genome_gene.entrez_gene_id
         </if>
         <include refid="where"/>
     </select>

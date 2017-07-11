@@ -44,8 +44,9 @@ public class DiscreteCopyNumberMyBatisRepository implements DiscreteCopyNumberRe
                                                                                  List<Integer> alterationTypes,
                                                                                  String projection) {
 
-        return discreteCopyNumberMapper.getDiscreteCopyNumbersBySampleIds(geneticProfileId, sampleIds, entrezGeneIds,
+        List<DiscreteCopyNumberData> result = discreteCopyNumberMapper.getDiscreteCopyNumbersBySampleIds(geneticProfileId, sampleIds, entrezGeneIds,
             alterationTypes, projection);
+        return result;
     }
 
     @Override

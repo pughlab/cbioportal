@@ -87,8 +87,7 @@ public class MutationServiceImpl implements MutationService {
 
         validateGeneticProfile(geneticProfileId);
 
-        List<Mutation> mutationList = mutationRepository.fetchMutationsInGeneticProfile(geneticProfileId, sampleIds,
-            entrezGeneIds, snpOnly, projection, pageSize, pageNumber, sortBy, direction);
+        List<Mutation> mutationList = mutationRepository.fetchMutationsInGeneticProfile(geneticProfileId, sampleIds, entrezGeneIds, snpOnly, projection, pageSize, pageNumber, sortBy, direction);
 
         mutationList.forEach(mutation -> chromosomeCalculator.setChromosome(mutation.getGene()));
         return mutationList;

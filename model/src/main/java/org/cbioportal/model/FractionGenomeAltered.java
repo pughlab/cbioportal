@@ -5,16 +5,16 @@ import java.math.BigDecimal;
 
 public class FractionGenomeAltered implements Serializable {
 
-    private String studyId;
+    private String profileId;
     private String sampleId;
     private BigDecimal value;
 
-    public String getStudyId() {
-        return studyId;
+    public String getProfileId() {
+        return profileId;
     }
 
-    public void setStudyId(String studyId) {
-        this.studyId = studyId;
+    public void setProfileId(String profileId) {
+        this.profileId = profileId;
     }
 
     public String getSampleId() {
