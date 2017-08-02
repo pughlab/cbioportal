@@ -4,7 +4,7 @@
   <parent>
     <artifactId>master</artifactId>
     <groupId>org.mskcc.cbio</groupId>
-    <version>1.7.5-SNAPSHOT</version>
+    <version>1.8.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>cbioportal</artifactId>
@@ -95,7 +95,7 @@
                 <artifactItem>
                   <groupId>com.github.cbioportal</groupId>
                   <artifactId>cbioportal-frontend</artifactId>
-                  <version>9e05cfa23b1ab7cc6f8f17a884e1b54c5dd89c63</version>
+                  <version>5cae25eccbbb4218743211c6a0da12b9167df7d8</version>
                   <type>jar</type>
                   <outputDirectory>.</outputDirectory>
                   <excludes>*index*</excludes>
