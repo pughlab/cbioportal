@@ -72,6 +72,7 @@ public final class ExtendedMutation
         private int oncotatorProteinPosStart;
         private int oncotatorProteinPosEnd;
         private boolean canonicalTranscript;
+        private int referenceGenomeId;
         private float cancerCellFraction;
         private String subclonalNode;
 
@@ -311,6 +312,14 @@ public final class ExtendedMutation
 
         public void setCancerCellFraction(float cancerCellFraction) {
             this.cancerCellFraction = cancerCellFraction;
+        }
+        
+        public void setReferenceGenomeId(int referenceGenomeId) {
+            this.referenceGenomeId = referenceGenomeId;
+        }
+        
+        public int getReferenceGenomeId() {
+            return this.referenceGenomeId;
         }
         
         public float getCancerCellFraction() {
@@ -969,6 +978,14 @@ public final class ExtendedMutation
     public float getCancerCellFraction() { return event.getCancerCellFraction(); }
     
     public void setCancerCellFraction(float fraction) { event.setCancerCellFraction(fraction);}
+    
+    public void setReferenceGenomeId(int referenceGenomeId) {
+        event.setReferenceGenomeId(referenceGenomeId);
+    }
+    
+    public int getReferenceGenomeId() {
+        return event.getReferenceGenomeId();
+    }
     
     public MutationEvent getEvent() {
         return event;

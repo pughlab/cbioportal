@@ -386,7 +386,7 @@ public class ImportExtendedMutationData{
 
                     // TODO we don't use this info right now...
                     mutation.setCanonicalTranscript(true);
-                    
+                    mutation.setReferenceGenomeId(record.getReferenceGenomeId());
                     mutation.setSubclonalNode(record.getSubclonalNode());
                     mutation.setCancerCellFraction(record.getCancerCellFraction());
                     

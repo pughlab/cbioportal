@@ -132,6 +132,7 @@ public class MafRecord
 	private int oncotatorProteinPosStartBestEffect;
 	private int oncotatorProteinPosEndBestEffect;
 	
+	private int referenceGenomeId;
 	private String subclonalNode;
 	private float cancerCellFraction;
 	
@@ -149,8 +150,19 @@ public class MafRecord
 
     public void setNcbiBuild(String ncbiBuild) {
         this.ncbiBuild = ncbiBuild;
+        if (ncbiBuild.equalsIgnoreCase("GRCh38")) {
+            this.referenceGenomeId = 2;
+        } else if (ncbiBuild.equalsIgnoreCase("GRCm38")) {
+            this.referenceGenomeId = 3;
+        } else {
+            this.referenceGenomeId = 1;
+        }
     }
 
+    public int getReferenceGenomeId() {
+	    return this.referenceGenomeId;
+    }
+    
     public long getStartPosition() {
         return startPosition;
     }
