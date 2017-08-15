@@ -136,6 +136,8 @@ public class MafUtil
 	public static final String ONCOTATOR_EXON_AFFECTED_BE = "ONCOTATOR_EXON_AFFECTED_BEST_EFFECT";
 	public static final String ONCOTATOR_PROTEIN_POS_START_BE = "ONCOTATOR_PROTEIN_POS_START_BEST_EFFECT";
 	public static final String ONCOTATOR_PROTEIN_POS_END_BE = "ONCOTATOR_PROTEIN_POS_END_BEST_EFFECT";
+	public static final String SUBCLONAL_NODE = "CLONAL_NODE";
+    public static final String CANCER_CELL_FRACTION = "CANCER_CELL_FRACTION";
 
 	// mutation assessor column names
 	public static final String MA_FIMPACT = "MA:FImpact";
@@ -231,6 +233,10 @@ public class MafUtil
 	private int maLinkMsaIndex = -1; // MA:link.MSA
 	private int maLinkPdbIndex = -1; // MA:link.PDB
 	private int maProteinChangeIndex = -1; // MA:protein.change
+
+    // Subclonal mutation indices
+    private int subclonalNodeIndex = -1;
+    private int cancerCellFractionIndex = -1;
 
 	// number of headers in the header line
     private int headerCount;
@@ -426,6 +432,10 @@ public class MafUtil
                 normalDepthIndex = i;
             } else if(header.equalsIgnoreCase(NORMAL_VAF)) {
                 normalVafIndex = i;
+            } else if (header.equalsIgnoreCase(SUBCLONAL_NODE)) {
+                subclonalNodeIndex = i;
+            } else if (header.equalsIgnoreCase(CANCER_CELL_FRACTION)) {
+                cancerCellFractionIndex = i;
             }
         }
     }
@@ -533,8 +543,11 @@ public class MafUtil
 	    record.setOncotatorExonAffectedBestEffect(TabDelimitedFileUtil.getPartInt(oncoExonAffectedBeIndex, parts));
 	    record.setOncotatorProteinPosStartBestEffect(TabDelimitedFileUtil.getPartInt(oncoProteinPosStartBeIndex, parts));
 	    record.setOncotatorProteinPosEndBestEffect(TabDelimitedFileUtil.getPartInt(oncoProteinPosEndBeIndex, parts));
+	    
+	    record.setSubclonalNode(TabDelimitedFileUtil.getPartString(subclonalNodeIndex, parts));
+	    record.setCancerCellFraction(TabDelimitedFileUtil.getPartFloat(cancerCellFractionIndex, parts));
             
-            fixEndPointForInsertion(record);
+        fixEndPointForInsertion(record);
             
         return record;
     }
@@ -859,6 +872,11 @@ public class MafUtil
 	{
 		return oncoProteinPosEndBeIndex;
 	}
+	
+	public int getSubclonalNodeIndex() { return subclonalNodeIndex; }
+	
+	public int getCancerCellFractionIndex() { return this.cancerCellFractionIndex; }
+	
 
 	public int getColumnIndex(String colName)
 	{

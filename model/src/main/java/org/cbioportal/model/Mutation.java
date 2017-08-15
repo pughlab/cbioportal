@@ -2,6 +2,7 @@ package org.cbioportal.model;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.regex.*;
 
 public class Mutation extends Alteration implements Serializable {
     
@@ -31,6 +32,8 @@ public class Mutation extends Alteration implements Serializable {
     private Integer oncotatorProteinPosEnd;
     private String keyword;
     private String chr;
+    private BigDecimal cancerCellFraction;
+    private String subclonalNode;
     
     public String getCenter() {
         return center;
@@ -244,5 +247,32 @@ public class Mutation extends Alteration implements Serializable {
     
     public void setChr(String chr) {
         this.chr = chr;
+    }
+    
+    public void setCancerCellFraction(BigDecimal cancerCellFraction) {
+        this.cancerCellFraction = cancerCellFraction;
+    }
+    
+    public BigDecimal getCancerCellFraction() {
+        return this.cancerCellFraction;
+    }
+    
+    public void setSubclonalNode(String subclonalNode) {
+        if (!subclonalNode.isEmpty()) {
+            String pattern = "([a-zA-Z]+)(\\d+)";
+            Pattern p = Pattern.compile(pattern);
+            Matcher m = p.matcher(subclonalNode);
+            if (m.find()) {
+                this.subclonalNode = m.group(1) + " " + m.group(2); 
+            }
+        }
+        else {
+            this.subclonalNode = subclonalNode;
+        }
+        
+    }
+    
+    public String getSubclonalNode() {
+        return this.subclonalNode;
     }
 }

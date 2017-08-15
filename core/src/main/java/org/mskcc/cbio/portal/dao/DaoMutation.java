@@ -120,7 +120,9 @@ public final class DaoMutation {
                 Integer.toString(event.getOncotatorProteinPosStart()),
                 Integer.toString(event.getOncotatorProteinPosEnd()),
                 boolToStr(event.isCanonicalTranscript()),
-                keyword==null ? "\\N":(event.getGene().getHugoGeneSymbolAllCaps()+" "+keyword));
+                keyword==null ? "\\N":(event.getGene().getHugoGeneSymbolAllCaps()+" "+keyword),
+                Float.toString(event.getCancerCellFraction()),
+                event.getSubclonalNode());
         return 1;
     }
 

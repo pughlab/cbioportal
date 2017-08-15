@@ -132,6 +132,9 @@ public class MafRecord
 	private int oncotatorProteinPosStartBestEffect;
 	private int oncotatorProteinPosEndBestEffect;
 	
+	private String subclonalNode;
+	private float cancerCellFraction;
+	
 	public String getChr() {
         return chr;
     }
@@ -859,4 +862,20 @@ public class MafRecord
 	public void setMaProteinChange(String maProteinChange) {
 		this.maProteinChange = maProteinChange;
 	}
+	
+	public void setSubclonalNode(String subclonalNode) {
+        this.subclonalNode = subclonalNode;
+    }
+    
+    public String getSubclonalNode() {
+	    return this.subclonalNode;
+    }
+    
+    public void setCancerCellFraction(float cancerCellFraction) {
+        this.cancerCellFraction = cancerCellFraction;
+    }
+    
+    public float getCancerCellFraction() {
+	    return this.cancerCellFraction;
+    }
 }

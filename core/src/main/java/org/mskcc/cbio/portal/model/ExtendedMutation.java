@@ -47,7 +47,7 @@ public final class ExtendedMutation
         private long mutationEventId;
         private CanonicalGene gene;
         private String chr;
-            private long startPosition;
+        private long startPosition;
         private long endPosition;
         private String proteinChange; // amino acid change
         private String mutationType; // variant classification
@@ -56,7 +56,7 @@ public final class ExtendedMutation
         private String linkXVar;
         private String linkPdb;
         private String linkMsa;
-            private String keyword;
+        private String keyword;
         private String ncbiBuild;
         private String strand;
         private String variantType;
@@ -72,6 +72,8 @@ public final class ExtendedMutation
         private int oncotatorProteinPosStart;
         private int oncotatorProteinPosEnd;
         private boolean canonicalTranscript;
+        private float cancerCellFraction;
+        private String subclonalNode;
 
         public long getMutationEventId() {
             return mutationEventId;
@@ -307,6 +309,22 @@ public final class ExtendedMutation
             this.canonicalTranscript = canonicalTranscript;
         }
 
+        public void setCancerCellFraction(float cancerCellFraction) {
+            this.cancerCellFraction = cancerCellFraction;
+        }
+        
+        public float getCancerCellFraction() {
+            return this.cancerCellFraction;
+        }
+        
+        public void setSubclonalNode(String subclonalNode) {
+            this.subclonalNode = subclonalNode;
+        }
+        
+        public String getSubclonalNode() {
+            return this.subclonalNode;
+        }
+        
         // The fields used here have to be the same as in sql file.
         // The comparison has to be case insensitive, since this is how MYSQL will
         // look at the values for the UQ constraint in DB.
@@ -943,7 +961,15 @@ public final class ExtendedMutation
     public void setKeyword(String keyword) {
         event.setKeyword(keyword);
     }
-
+    
+    public String getSubclonalNode() { return event.getSubclonalNode(); }
+    
+    public void setSubclonalNode(String node) { event.setSubclonalNode(node);}
+    
+    public float getCancerCellFraction() { return event.getCancerCellFraction(); }
+    
+    public void setCancerCellFraction(float fraction) { event.setCancerCellFraction(fraction);}
+    
     public MutationEvent getEvent() {
         return event;
     }

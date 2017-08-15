@@ -36,7 +36,9 @@
             mutation_event.ONCOTATOR_REFSEQ_MRNA_ID AS oncotatorRefseqMrnaId,
             mutation_event.ONCOTATOR_PROTEIN_POS_START AS oncotatorProteinPosStart,
             mutation_event.ONCOTATOR_PROTEIN_POS_END AS oncotatorProteinPosEnd,
-            mutation_event.KEYWORD AS keyword
+            mutation_event.KEYWORD AS keyword,
+            mutation_event.CANCER_CELL_FRACTION AS cancerCellFraction,
+            mutation_event.SUBCLONAL_NODE AS subclonalNode
         </if>
         <if test="projection == 'DETAILED'">
             ,
@@ -134,6 +136,7 @@
         <if test="projection == 'DETAILED'">
             INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
             INNER JOIN reference_genome_gene on reference_genome_gene.reference_genome_id = mutation_event.REFERENCE_GENOME_ID
+                    AND reference_genome_gene.entrez_gene_id = gene.ENTREZ_GENE_ID
         </if>
         <include refid="whereBySampleListId"/>
         <if test="sortBy != null and projection != 'ID'">
