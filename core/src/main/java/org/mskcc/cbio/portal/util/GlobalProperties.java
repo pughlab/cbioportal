@@ -112,15 +112,17 @@ public class GlobalProperties {
     @Value("${skin.authorization_message:Access to this portal is only available to authorized users.}")
     public void setSkinAuthorizationMessage(String property) { skinAuthorizationMessage = property; }
     public static final String SKIN_EXAMPLE_STUDY_QUERIES = "skin.example_study_queries";
-    public static final String DEFAULT_SKIN_EXAMPLE_STUDY_QUERIES =
+    public static final String DEFAULT_SKIN_EXAMPLE_STUDY_QUERIES =        
+            "tcga pancancer atlas\n" +
             "tcga provisional\n" +
-            "tcga -provisional\n" +
-            "tcga OR icgc\n" +
+            "tcga -provisional -pancancer\n" +
+            "tcga or icgc\n" +
+            "msk-impact\n" +
             "-\"cell line\"\n" +
-            "prostate mskcc\n" +
+            "breast\n" +
             "esophageal OR stomach\n" +
-            "serous\n" +
-            "breast";
+            "prostate msk\n" +
+            "serous";
     public static final String SKIN_DATASETS_HEADER = "skin.data_sets_header";
     public static final String DEFAULT_SKIN_DATASETS_HEADER = "The portal currently contains data from the following " +
             "cancer genomics studies.  The table below lists the number of available samples per data type and tumor.";
@@ -250,6 +252,10 @@ public class GlobalProperties {
     private static boolean showCivic;
     @Value("${show.civic:false}") // default is false
     public void setShowCivic(String property) { showCivic = Boolean.parseBoolean(property); }
+
+    private static boolean sitemaps;
+    @Value("${sitemaps:false}") // default is false
+    public void setSitemaps(String property) { sitemaps = Boolean.parseBoolean(property); }
 
     private static boolean showGenomeNexus;
     @Value("${show.genomenexus:true}") // default is true
@@ -402,7 +408,8 @@ public class GlobalProperties {
 
     public static boolean usersMustAuthenticate()
     {
-        return (!authenticate.isEmpty() && !authenticate.equals("false"));
+        // authentication for social_auth is optional
+        return (!authenticate.isEmpty() && !authenticate.equals("false") && !authenticate.equals("social_auth"));
     }
 
     public static String authenticationMethod()
@@ -692,13 +699,13 @@ public class GlobalProperties {
 
     public static String getLinkToPatientView(String caseId, String cancerStudyId)
     {
-        return "case.do#/patient?caseId=" + caseId
+        return "patient?caseId=" + caseId
                  + "&studyId=" + cancerStudyId;
     }
 
     public static String getLinkToSampleView(String caseId, String cancerStudyId)
     {
-        return "case.do#/patient?sampleId=" + caseId
+        return "patient?sampleId=" + caseId
                  + "&studyId=" + cancerStudyId;
     }
 
@@ -854,6 +861,10 @@ public class GlobalProperties {
         }else{
             return true;
         }
+    }
+
+    public static boolean showSitemaps() {
+       return sitemaps;
     }
 
     public static boolean showCivic() {
