@@ -28,7 +28,7 @@
         DESCRIPTION as description,
         PMID as pmid,
         CITATION as citation,
-        GROUPS as groups,
+        "GROUPS" as groups,
         CANCER_STUDY_ID as internal_id
     from cancer_study
 </select>    
