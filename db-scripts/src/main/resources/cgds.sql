@@ -398,15 +398,15 @@ CREATE TABLE `mutation_event` (
   `CHR` varchar(5),
   `START_POSITION` bigint(20),
   `END_POSITION` bigint(20),
-  `REFERENCE_ALLELE` varchar(255),
-  `TUMOR_SEQ_ALLELE` varchar(255),
+  `REFERENCE_ALLELE` varchar(400),
+  `TUMOR_SEQ_ALLELE` varchar(400),
   `PROTEIN_CHANGE` varchar(255),
-  `MUTATION_TYPE` varchar(64) COMMENT 'e.g. Missense, Nonsence, etc.',
+  `MUTATION_TYPE` varchar(255) COMMENT 'e.g. Missense, Nonsence, etc.',
   `FUNCTIONAL_IMPACT_SCORE` varchar(50) COMMENT 'Result from OMA/XVAR.',
   `FIS_VALUE` float,
-  `LINK_XVAR` varchar(255) COMMENT 'Link to OMA/XVAR Landing Page for the specific mutation.',
-  `LINK_PDB` varchar(255),
-  `LINK_MSA` varchar(255),
+  `LINK_XVAR` varchar(500) COMMENT 'Link to OMA/XVAR Landing Page for the specific mutation.',
+  `LINK_PDB` varchar(500),
+  `LINK_MSA` varchar(500),
   `NCBI_BUILD` varchar(10),
   `STRAND` varchar(2),
   `VARIANT_TYPE` varchar(15),
@@ -420,7 +420,7 @@ CREATE TABLE `mutation_event` (
   `ONCOTATOR_PROTEIN_POS_START` int(11),
   `ONCOTATOR_PROTEIN_POS_END` int(11),
   `CANONICAL_TRANSCRIPT` boolean,
-  `KEYWORD` varchar(50) DEFAULT NULL COMMENT 'e.g. truncating, V200 Missense, E338del, ',
+  `KEYWORD` varchar(255) DEFAULT NULL COMMENT 'e.g. truncating, V200 Missense, E338del, ',
   KEY (`KEYWORD`),
   PRIMARY KEY (`MUTATION_EVENT_ID`),
   UNIQUE (`CHR`, `START_POSITION`, `END_POSITION`, `TUMOR_SEQ_ALLELE`, `ENTREZ_GENE_ID`, `PROTEIN_CHANGE`, `MUTATION_TYPE`),
@@ -820,4 +820,4 @@ CREATE TABLE `info` (
   `GENESET_VERSION` varchar(24)
 );
 -- THIS MUST BE KEPT IN SYNC WITH db.version PROPERTY IN pom.xml
-INSERT INTO info VALUES ('2.7.0', NULL);
+INSERT INTO info VALUES ('2.6.1', NULL);
