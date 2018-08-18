@@ -68,7 +68,21 @@ def interface():
                         help='report status info messages while validating')
     parser.add_argument('-o', '--override_warning', action='store_true',
                         help='override warnings and continue importing')
-
+    parser.add_argument('-r', '--relaxed_clinical_definitions', required=False,
+                        action='store_true', default=False,
+                        help='Option to enable relaxed mode for validator when '
+                             'validating clinical data without header definitions')
+    parser.add_argument('-m', '--strict_maf_checks', required=False,
+                        action='store_true', default=False,
+                        help='Option to enable strict mode for validator when '
+                             'validating mutation data')
+    parser.add_argument('-a', '--max_reported_values', required=False,
+                        type=int, default=3,
+                        help='Cutoff in report for the maximum number of line numbers '
+                             'and values encountered to report for each message in the HTML '
+                             'report. For example, set this to a high number to '
+                             'report all genes that could not be loaded, instead '
+                             'of reporting "(GeneA, GeneB, GeneC, 213 more)".')
     parser = parser.parse_args()
     return parser
 

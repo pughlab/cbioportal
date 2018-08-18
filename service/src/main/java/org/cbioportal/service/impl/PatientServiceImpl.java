@@ -63,4 +63,10 @@ public class PatientServiceImpl implements PatientService {
         
         return patientRepository.fetchMetaPatients(studyIds, patientIds);
     }
+
+	@Override
+	public List<Patient> getPatientsOfSamples(List<String> studyIds, List<String> sampleIds) {
+        
+        return patientRepository.getPatientsOfSamples(studyIds, sampleIds);
+	}
 }

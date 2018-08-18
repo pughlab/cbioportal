@@ -85,6 +85,7 @@ DROP TABLE IF EXISTS `gene_alias`;
 DROP TABLE IF EXISTS `geneset_gene`;
 DROP TABLE IF EXISTS `reference_genome_gene`;
 DROP TABLE IF EXISTS `gene`;
+DROP TABLE IF EXISTS `fraction_genome_altered`;
 DROP TABLE IF EXISTS `sample_list_list`;
 DROP TABLE IF EXISTS `sample_list`;
 DROP TABLE IF EXISTS `sample`;
@@ -98,7 +99,6 @@ DROP TABLE IF EXISTS `geneset_hierarchy_node`;
 DROP TABLE IF EXISTS `geneset`;
 DROP TABLE IF EXISTS `genetic_entity`;
 DROP TABLE IF EXISTS `reference_genome`;
-DROP TABLE IF EXISTS `fraction_genome_altered`;
 
 -- --------------------------------------------------------
 CREATE TABLE `type_of_cancer` (
@@ -420,7 +420,7 @@ CREATE TABLE `mutation_event` (
   `ONCOTATOR_PROTEIN_POS_START` int(11),
   `ONCOTATOR_PROTEIN_POS_END` int(11),
   `CANONICAL_TRANSCRIPT` boolean,
-  `KEYWORD` varchar(50) DEFAULT NULL COMMENT 'e.g. truncating, V200 Missense, E338del, ',
+  `KEYWORD` varchar(255) DEFAULT NULL COMMENT 'e.g. truncating, V200 Missense, E338del, ',
   KEY (`KEYWORD`),
   PRIMARY KEY (`MUTATION_EVENT_ID`),
   UNIQUE (`CHR`, `START_POSITION`, `END_POSITION`, `TUMOR_SEQ_ALLELE`, `ENTREZ_GENE_ID`, `PROTEIN_CHANGE`, `MUTATION_TYPE`),
@@ -820,4 +820,4 @@ CREATE TABLE `info` (
   `GENESET_VERSION` varchar(24)
 );
 -- THIS MUST BE KEPT IN SYNC WITH db.version PROPERTY IN pom.xml
-INSERT INTO info VALUES ('2.6.0', NULL);
+INSERT INTO info VALUES ('2.6.1', NULL);

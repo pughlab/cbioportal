@@ -7,7 +7,7 @@
     <!-- general settings -->
 
     <session-config>
-      <session-timeout>720</session-timeout>
+      <session-timeout>${tomcat.session.timeout}</session-timeout>
     </session-config>
     <mime-mapping>
         <extension>wsdl</extension>
@@ -82,7 +82,7 @@
 
     <filter-mapping>
       <filter-name>APICorsFilter</filter-name>
-      <url-pattern>/api-legacy/proxy/session-service/*</url-pattern>
+      <url-pattern>/api-legacy/proxy/session/*</url-pattern>
     </filter-mapping>
 
     <filter>
@@ -443,7 +443,10 @@
         <servlet-name>patient_view</servlet-name>
         <url-pattern>/case.do</url-pattern>
     </servlet-mapping>
-
+    <servlet-mapping>
+        <servlet-name>patient_view</servlet-name>
+        <url-pattern>/patient</url-pattern>
+    </servlet-mapping>
     <servlet>
         <servlet-name>CrossCancerJSON</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.CrossCancerJSON</servlet-class>
@@ -518,6 +521,20 @@
     <servlet-mapping>
         <servlet-name>cancer_study_view</servlet-name>
         <url-pattern>/study</url-pattern>
+    </servlet-mapping>
+    
+    
+    <servlet>
+        <servlet-name>cancer_study_view_v2</servlet-name>
+        <servlet-class>org.mskcc.cbio.portal.servlet.CancerStudyViewV2</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>cancer_study_view_v2</servlet-name>
+        <url-pattern>/newstudy.do</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>cancer_study_view_v2</servlet-name>
+        <url-pattern>/newstudy</url-pattern>
     </servlet-mapping>
     
     <servlet>
@@ -639,6 +656,35 @@
     <servlet-mapping>
         <servlet-name>link_out</servlet-name>
         <url-pattern>/ln</url-pattern>
+    </servlet-mapping>
+
+
+    <servlet>
+        <servlet-name>SiteMapIndex</servlet-name>
+        <jsp-file>/sitemap_index.jsp</jsp-file>
+    </servlet>
+    <!--mapping-->
+    <servlet-mapping>
+        <servlet-name>SiteMapIndex</servlet-name>
+        <url-pattern>/sitemap_index.xml</url-pattern>
+    </servlet-mapping>
+    
+    <servlet>
+        <servlet-name>SiteMapStudy</servlet-name>
+        <jsp-file>/sitemap_study.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SiteMapStudy</servlet-name>
+        <url-pattern>/sitemap_study.xml</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>RobotsIndex</servlet-name>
+        <jsp-file>/robots.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>RobotsIndex</servlet-name>
+        <url-pattern>/robots.txt</url-pattern>
     </servlet-mapping>
 
 </web-app>
