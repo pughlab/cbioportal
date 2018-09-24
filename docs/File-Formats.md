@@ -256,6 +256,9 @@ These columns can be in either the patient or sample file.
 ##### Other columns without specific functionality
 You can add any additional columns with clinical data to either the patient or sample file. If correctly formatted with the 5-row header, cBioPortal will add them to the database. Be sure to provide the correct `Datatype`, as described above (for the header lines), for optimal search, sorting, filtering (in [clinical data tab](http://www.cbioportal.org/study?id=brca_tcga#clinical)) and visualization.
 
+##### Banned column names
+`MUTATION_COUNT` and `FRACTION_GENOME_ALTERED` are auto populated clinical attributes, and should therefore not be present in clinical data files.
+
 ## Discrete Copy Number Data
 The discrete copy number data file contain values that would be derived from copy-number analysis algorithms like [GISTIC](http://www.ncbi.nlm.nih.gov/sites/entrez?term=18077431) or [RAE](http://www.ncbi.nlm.nih.gov/sites/entrez?term=18784837). GISTIC can be [installed](http://www.broadinstitute.org/cgi-bin/cancer/publications/pub_paper.cgi?mode=view&paper_id=216&p=t) or run online using the GISTIC 2.0 module on [GenePattern](http://genepattern.broadinstitute.org/gp/pages/login.jsf). For some help on using GISTIC, check the [Data Loading: Tips and Best Practices](Data-Loading-Tips-and-Best-Practices.md) page.
 
@@ -1191,12 +1194,12 @@ geneset_def_version: msigdb_6.1
 ### GSVA score data file
 The data file will be a simple tab separated format, similar to the expression data file: each sample is a column, each gene set a row, each cell contains the GSVA score for that sample x gene set combination.
 
-The first column is the GENESET_ID. This contains the EXTERNAL_ID or "stable id" (MsigDB calls this "standard name") of the gene set. The other colums are the sample columns: An additional column for each sample in the dataset using the sample id as the column header.
+The first column is the `geneset_id` and contains the name of the gene sets. Gene set names should be formatted in uppercase. The other columns are sample columns: An additional column for each sample in the dataset using the sample id as the column header.
 
 The cells contain the GSVA(-like) score: which is real number, between -1.0 and 1.0, representing the score for the gene set in the respective sample, or NA when the score for the gene set in the respective sample could not be (or was not) calculated. Example with 2 gene sets and 3 samples: 
 
 <table>
-<thead><tr><th>GENESET_ID</th><th>TCGA-AO-A0J</th><th>TCGA-A2-A0Y</th><th>TCGA-A2-A0S</th></tr></thead>
+<thead><tr><th>geneset_id</th><th>TCGA-AO-A0J</th><th>TCGA-A2-A0Y</th><th>TCGA-A2-A0S</th></tr></thead>
 <tr><td>GO_POTASSIUM_ION_TRANSPOR</td><td>-0.987</td><td>0.423</td><td>-0.879</td></tr>
 <tr><td>GO_GLUCURONATE_METABOLIC_PROCES</td><td>0.546</td><td>0.654</td><td>0.123</td></tr>
 <tr><td>..</td><td></td><td></td><td></td></tr>
@@ -1235,12 +1238,12 @@ geneset_def_version: msigdb_6.1
 ### GSVA p-value data file
 The data file will be a simple tab separated format, similar to the score file: each sample is a column, each gene set a row, each cell contains the p-value for the score found for sample x gene set combination.
 
-The first column is the GENESET_ID. This contains the EXTERNAL_ID or "stable id" (MsigDB calls this "standard name") of the gene set. The other colums are the sample columns: An additional column for each sample in the dataset using the sample id as the column header.
+The first column is the `geneset_id` and contains the name of the gene sets. Gene set names should be formatted in uppercase. The other columns are sample columns: An additional column for each sample in the dataset using the sample id as the column header.
 
 The cells contain the p-value for the GSVA score: A real number, between 0.0 and 1.0, representing the p-value for the GSVA score calculated for the gene set in the respective sample, or NA when the score for the gene is also NA. Example with 2 gene sets and 3 samples: 
 
 <table>
-<thead><tr><th>GENESET_ID</th><th>TCGA-AO-A0J</th><th>TCGA-A2-A0Y</th><th>TCGA-A2-A0S</th></tr></thead>
+<thead><tr><th>geneset_id</th><th>TCGA-AO-A0J</th><th>TCGA-A2-A0Y</th><th>TCGA-A2-A0S</th></tr></thead>
 <tr><td>GO_POTASSIUM_ION_TRANSPOR</td><td>0.0811</td><td>0.0431</td><td>0.0087</td></tr>
 <tr><td>GO_GLUCURONATE_METABOLIC_PROCES</td><td>0.6621</td><td>0.0031</td><td>1.52e-9</td></tr>
 <tr><td>..</td><td></td><td></td><td></td></tr>
