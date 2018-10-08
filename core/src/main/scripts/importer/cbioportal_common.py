@@ -742,7 +742,7 @@ def parse_metadata_file(filename,
         # Todo: Restore validation for reference genome in segment files
         # Validation can be restored to normal when hg18 data on public portal and data hub has been
         # liftovered to hg19. It was decided in the data hub call of August 14 2018 to remove validation until then.
-        valid_segment_reference_genomes = ['hg18', 'hg19']
+        valid_segment_reference_genomes = ['hg18', 'hg19','hg38']
         if meta_dictionary['reference_genome_id'] not in valid_segment_reference_genomes:
             logger.error(
                 'Reference_genome_id is not %s',
