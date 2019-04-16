@@ -41,7 +41,7 @@ import java.util.*;
 @PublicApi
 @RestController
 @Validated
-@Api(tags = "O. Gene Panels", description = " ")
+@Api(tags = "Gene Panels", description = " ")
 public class GenePanelController {
 
     @Autowired
@@ -101,7 +101,7 @@ public class GenePanelController {
     }
 
     @PreAuthorize("hasPermission(#molecularProfileId, 'MolecularProfileId', 'read')")
-    @RequestMapping(value = "/molecular-profiles/{molecularProfileId}/gene-panel-data/fetch", method = RequestMethod.POST,
+    @RequestMapping(value = "/molecular-profiles/{molecularProfileId}/gene-panel-data/fetch", method = RequestMethod.POST, 
         consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ApiOperation("Get gene panel data")
     public ResponseEntity<List<GenePanelData>> getGenePanelData(
@@ -124,18 +124,18 @@ public class GenePanelController {
 
 
     @PreAuthorize("hasPermission(#involvedCancerStudies, 'Collection<CancerStudyId>', 'read')")
-    @RequestMapping(value = "/gene-panel-data/fetch", method = RequestMethod.POST,
+    @RequestMapping(value = "/gene-panel-data/fetch", method = RequestMethod.POST, 
         consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ApiOperation("Fetch gene panel data")
     public ResponseEntity<List<GenePanelData>> fetchGenePanelDataInMultipleMolecularProfiles(
         @ApiIgnore // prevent reference to this attribute in the swagger-ui interface
         @RequestAttribute(required = false, value = "involvedCancerStudies") Collection<String> involvedCancerStudies,
         @ApiIgnore // prevent reference to this attribute in the swagger-ui interface. this attribute is needed for the @PreAuthorize tag above.
-        @Valid @RequestAttribute(required = false, value = "interceptedGenePanelSampleMolecularIdentifiers") List<SampleMolecularIdentifier> interceptedGenePanelSampleMolecularIdentifiers,
+        @RequestAttribute(required = false, value = "interceptedGenePanelSampleMolecularIdentifiers") List<SampleMolecularIdentifier> interceptedGenePanelSampleMolecularIdentifiers,
         @ApiParam(required = true, value = "List of Molecular Profile ID and Sample ID pairs")
         @Size(min = 1, max = PagingConstants.MAX_PAGE_SIZE)
         @RequestBody(required = false) List<SampleMolecularIdentifier> sampleMolecularIdentifiers) {
-
+        
         List<String> molecularProfileIds = new ArrayList<>();
         List<String> sampleIds = new ArrayList<>();
 
