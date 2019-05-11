@@ -41,6 +41,10 @@ public interface MutationRepository {
     List<MutationCountByGene> getSampleCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
                                                                         List<String> sampleIds,
                                                                         List<Integer> entrezGeneIds);
+    
+    List<MutationCountByGene> getSampleCountInMultipleMolecularProfilesForFusions(List<String> molecularProfileIds,
+                                                                        List<String> sampleIds,
+                                                                        List<Integer> entrezGeneIds);
 
     List<MutationCountByGene> getPatientCountByEntrezGeneIdsAndSampleIds(String molecularProfileId,
                                                                          List<String> patientIds,
