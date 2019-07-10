@@ -6,15 +6,14 @@ import javax.validation.constraints.NotNull;
 
 public class CoExpression implements Serializable {
 
-    public enum GeneticEntityType {
-
-        GENE, GENESET
-    }
-
     @NotNull
     private String geneticEntityId;
     @NotNull
-    private GeneticEntityType geneticEntityType;
+    private String geneticEntityName;
+    @NotNull
+    private EntityType geneticEntityType;
+    @NotNull
+    private String cytoband;
     @NotNull
     private BigDecimal spearmansCorrelation;
     @NotNull
@@ -28,12 +27,28 @@ public class CoExpression implements Serializable {
         this.geneticEntityId = geneticEntityId;
     }
 
-    public GeneticEntityType getGeneticEntityType() {
+    public String getGeneticEntityName() {
+        return geneticEntityName;
+    }
+
+    public void setGeneticEntityName(String geneticEntityName) {
+        this.geneticEntityName = geneticEntityName;
+    }
+    
+    public EntityType getGeneticEntityType() {
         return geneticEntityType;
     }
 
-    public void setGeneticEntityType(GeneticEntityType geneticEntityType) {
+    public void setGeneticEntityType(EntityType geneticEntityType) {
         this.geneticEntityType = geneticEntityType;
+    }
+
+    public String getCytoband() {
+        return cytoband;
+    }
+
+    public void setCytoband(String cytoband) {
+        this.cytoband = cytoband;
     }
 
     public BigDecimal getSpearmansCorrelation() {
