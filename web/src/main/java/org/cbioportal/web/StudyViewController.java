@@ -226,7 +226,7 @@ public class StudyViewController {
     @PreAuthorize("hasPermission(#involvedCancerStudies, 'Collection<CancerStudyId>', 'read')")
     @RequestMapping(value = "/fusion-genes/fetch", method = RequestMethod.POST,
         consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ApiOperation("Fetch mutated genes by study view filter")
+    @ApiOperation("Fetch fusion genes by study view filter")
     public ResponseEntity<List<MutationCountByGene>> fetchFusionGenes(
         @ApiParam(required = true, value = "Study view filter")
         @Valid @RequestBody(required = false) StudyViewFilter studyViewFilter,
@@ -234,7 +234,6 @@ public class StudyViewController {
         @RequestAttribute(required = false, value = "involvedCancerStudies") Collection<String> involvedCancerStudies,
         @ApiIgnore // prevent reference to this attribute in the swagger-ui interface. this attribute is needed for the @PreAuthorize tag above.
         @Valid @RequestAttribute(required = false, value = "interceptedStudyViewFilter") StudyViewFilter interceptedStudyViewFilter) throws StudyNotFoundException {
-
         List<SampleIdentifier> filteredSampleIdentifiers = studyViewFilterApplier.apply(interceptedStudyViewFilter);
         List<MutationCountByGene> result = new ArrayList<>();
         if (!filteredSampleIdentifiers.isEmpty()) {

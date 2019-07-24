@@ -90,7 +90,7 @@ public class StudyViewFilter implements Serializable {
         return fusionGenes;
     }
 
-    public void setFusionGenes(List<FusionGeneFilter> mutatedGenes) {
+    public void setFusionGenes(List<FusionGeneFilter> fusionGenes) {
         this.fusionGenes = fusionGenes;
     }
 

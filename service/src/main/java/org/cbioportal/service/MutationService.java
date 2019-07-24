@@ -25,6 +25,11 @@ public interface MutationService {
                                                            Integer pageSize, Integer pageNumber,
                                                            String sortBy, String direction);
 
+    List<Mutation> getMutationsInMultipleMolecularProfilesByMutationType(List<String> molecularProfileIds, List<String> sampleIds,
+                                                           List<Integer> entrezGeneIds, String mutationType, Boolean complementSet, String projection,
+                                                           Integer pageSize, Integer pageNumber,
+                                                           String sortBy, String direction);
+
     MutationMeta getMetaMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds, List<String> sampleIds,
                                                              List<Integer> entrezGeneIds);
 
