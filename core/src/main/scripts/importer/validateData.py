@@ -102,7 +102,6 @@ VALIDATOR_IDS = {
     cbioportal_common.MetaFileTypes.GENE_PANEL_MATRIX:'GenePanelMatrixValidator',
     cbioportal_common.MetaFileTypes.GSVA_SCORES:'GsvaScoreValidator',
     cbioportal_common.MetaFileTypes.GSVA_PVALUES:'GsvaPvalueValidator',
-    cbioportal_common.MetaFileTypes.TREATMENT:'TreatmentValidator',
     cbioportal_common.MetaFileTypes.GENERIC_ASSAY:'GenericAssayValidator',
     cbioportal_common.MetaFileTypes.STRUCTURAL_VARIANT:'StructuralVariantValidator'
 }
@@ -277,7 +276,7 @@ class PortalInstance(object):
     if the checks are to be skipped.
     """
 
-    def __init__(self, portal_info_dict, cancer_type_dict, hugo_entrez_map, alias_entrez_map, gene_set_list, gene_panel_list, treatment_map, offline=False):
+    def __init__(self, portal_info_dict, cancer_type_dict, hugo_entrez_map, alias_entrez_map, gene_set_list, gene_panel_list, geneset_version, offline=False):
         """Represent a portal instance with the given dictionaries."""
         self.portal_info_dict = portal_info_dict
         self.cancer_type_dict = cancer_type_dict
@@ -285,7 +284,7 @@ class PortalInstance(object):
         self.alias_entrez_map = alias_entrez_map
         self.gene_set_list = gene_set_list
         self.gene_panel_list = gene_panel_list
-        self.treatment_map = treatment_map
+        self.geneset_version = geneset_version
         self.entrez_set = set()
         for entrez_map in (hugo_entrez_map, alias_entrez_map):
             if entrez_map is not None:
@@ -3002,7 +3001,7 @@ class StructuralVariantValidator(Validator):
             self.structural_variant_entries[self.line_number]['Site1_Exon'] = site1_exon
             self.structural_variant_entries[self.line_number]['Site2_Ensembl_Transcript_Id'] = site2_transcript
             self.structural_variant_entries[self.line_number]['Site2_Exon'] = site2_exon
-            self.structural_variant_entries[self.line_number]['NCBI_Build'] = ncbi_build
+            self.structural_variant_entries[self.line_number]['NCBI_Build'] = self.ncbi_build
             self.structural_variant_entries[self.line_number]['Event_Info'] = 'Fusion'
             return
 
@@ -3024,13 +3023,9 @@ class StructuralVariantValidator(Validator):
         site2_entrez_gene_id = checkPresenceValue('Site2_Entrez_Gene_Id', self, data)
         self.checkGeneIdentification(site2_hugo_symbol, site2_entrez_gene_id)
 
-        # Validate fusion events
+        # Validate fusion events if Event_Info is 'Fusion'
         if data[self.cols.index('Event_Info')] == 'Fusion':
             checkFusionValues(self, data)
-        else:
-            self.logger.error('Validation and functionality for other structural variant events are not implemented '
-                              'yet. Event_Info must be "Fusion"',
-                              extra={'cause': self.cols.index('Event_Info')})
 
     def onComplete(self):
         """Perform final validations based on the data parsed."""
@@ -3038,6 +3033,9 @@ class StructuralVariantValidator(Validator):
         def listAllTranscripts(self):
             """List all transcripts"""
             for line_number in self.structural_variant_entries.keys():
+                # skip non-fusion events
+                if len(self.structural_variant_entries[line_number].keys()) == 0:
+                    continue
                 if self.structural_variant_entries[line_number]['Site1_Ensembl_Transcript_Id'] is not None:
                     self.transcript_set.add(self.structural_variant_entries[line_number]['Site1_Ensembl_Transcript_Id'])
                 if self.structural_variant_entries[line_number]['Site2_Ensembl_Transcript_Id'] is not None:
@@ -3122,10 +3120,10 @@ class StructuralVariantValidator(Validator):
                             site2_transcript in self.transcript_exons_dict):
                         if self.transcript_exons_dict[site2_transcript] is not None:
                             validateExonsInTranscript(self, site2_transcript, site2_exon, line_number)
+
             return
 
         # Start with validation for onComplete(self)
-
         # List all transcripts
         listAllTranscripts(self)
 
@@ -3816,7 +3814,7 @@ class MultipleDataFileValidator(FeaturewiseFileValidator, metaclass=ABCMeta):
 
         feature_id = nonsample_col_vals[0].strip()
 
-        # Check if treatment is present
+        # Check if feature is present
         if feature_id == '':
             # Validator already gives warning for this in checkLine method
             pass
@@ -3825,14 +3823,14 @@ class MultipleDataFileValidator(FeaturewiseFileValidator, metaclass=ABCMeta):
                                 extra={'line_number': self.line_number,
                                         'cause': 'id was`'+feature_id+'` and only alpha-numeric, _ and - are allowed.'})
         else:
-            # Check if this is the second treatment data file
+            # Check if this is the second data file
             if self.get_prior_validated_feature_ids() is not None:
-                # Check if treatment is in the first treatment data file
+                # Check if feature is in the first data file
                 if feature_id not in self.get_prior_validated_feature_ids():
                     self.logger.error('Feature id cannot be found in other data file',
                                       extra={'line_number': self.line_number,
                                              'cause': feature_id})
-            # Add treatment to list of treatments of current treatment data file
+            # Add feature to list of features of current data file
             self.feature_ids.append(feature_id)
         return feature_id
 
@@ -4214,7 +4212,6 @@ def process_metadata_files(directory, portal_instance, logger, relaxed_mode, str
     tags_file_path = None
 
     DISALLOWED_CHARACTERS = r'[^A-Za-z0-9_-]'
-
     for filename in filenames:
 
         meta_dictionary = cbioportal_common.parse_metadata_file(
@@ -4222,6 +4219,16 @@ def process_metadata_files(directory, portal_instance, logger, relaxed_mode, str
         meta_file_type = meta_dictionary['meta_file_type']
         if meta_file_type is None:
             continue
+
+        # check if geneset version is the same in database
+        if 'geneset_def_version' in meta_dictionary:
+            geneset_def_version = meta_dictionary['geneset_def_version'].strip()
+            if (geneset_def_version != portal_instance.geneset_version):
+                logger.error(
+                    '`geneset_def_version` is different from the geneset_version in the database',
+                    extra={'filename_': filename,
+                           'cause': geneset_def_version})
+
         # validate stable_id to be unique (check can be removed once we deprecate this field):
         if 'stable_id' in meta_dictionary:
             stable_id = meta_dictionary['stable_id'].strip()
@@ -4396,6 +4403,7 @@ def processCaseListDirectory(caseListDir, cancerStudyId, logger,
                                 'all_cases_with_mutation_and_cna_data',
                                 'all_cases_with_mutation_and_cna_and_mrna_data',
                                 'all_cases_with_gsva_data',
+                                'all_cases_with_sv_data',
                                 'other']
 
             # If the case list category is invalid, the importer will crash.
@@ -4618,6 +4626,8 @@ def request_from_portal_api(server_url, api_name, logger):
         service_url = server_url + '/api/' + api_name + "?pageSize=9999999"
 
     # TODO: change API for genes, gene aliases and cancer types to non-legacy
+    elif api_name in ['genesets_version']:
+        service_url = server_url + '/api/genesets/version'
     else:
         service_url = server_url + '/api-legacy/' + api_name
 
@@ -4720,6 +4730,7 @@ def extract_ids(json_data, id_key):
         result_set.add(data_item[id_key])
     return list(result_set)
 
+
 def index_treatment_data(json_data,
                          id_field='treatmentId'):
     result_dict = {}
@@ -4756,6 +4767,8 @@ def load_portal_info(path, logger, offline=False):
                                         json_data, 'treatmentId')),
             ('genesets',
                 lambda json_data: extract_ids(json_data, 'genesetId')),
+            ('genesets_version',
+                lambda json_data: str(json_data).strip(' \'[]')),
             ('gene-panels',
                 lambda json_data: extract_ids(json_data, 'genePanelId'))):
         if offline:
@@ -4765,6 +4778,7 @@ def load_portal_info(path, logger, offline=False):
         if parsed_json is not None and transform_function is not None:
             parsed_json = transform_function(parsed_json)
         portal_dict[api_name] = parsed_json
+    
     if all(d is None for d in list(portal_dict.values())):
         raise LookupError('No portal information found at {}'.format(path))
     return PortalInstance(portal_info_dict=portal_dict['info'],
@@ -4774,6 +4788,7 @@ def load_portal_info(path, logger, offline=False):
                           gene_set_list=portal_dict['genesets'],
                           gene_panel_list=portal_dict['gene-panels'],
                           treatment_map = portal_dict['treatments'],
+                          geneset_version = portal_dict['genesets_version'],
                           offline=offline)
 
 
@@ -4992,10 +5007,17 @@ def validate_study(study_dir, portal_instance, logger, relaxed_mode, strict_maf_
 
     logger.info('Validation complete')
 
+
+def get_pom_path():
+    """
+    Get location of pom.xml. In system and integration test this is mocked.
+    """
+    pom_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))))) + "/pom.xml"
+    return pom_path
+
 def main_validate(args):
 
     """Main function: process parsed arguments and validate the study."""
-
     # get a logger to emit messages
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
@@ -5074,7 +5096,8 @@ def main_validate(args):
                                          alias_entrez_map=None,
                                          gene_set_list=None,
                                          gene_panel_list=None,
-                                         treatment_map=None)
+                                         treatment_map=None,
+                                         geneset_version =None)
     elif args.portal_info_dir:
         portal_instance = load_portal_info(args.portal_info_dir, logger,
                                            offline=True)
