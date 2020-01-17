@@ -17,9 +17,17 @@
 
   <repositories>
     <repository>
-      <id>alfresco</id>
-      <name>Alfresco</name>
-      <url>https://artifacts.alfresco.com/nexus/content/repositories/public/</url>
+      <id>plugins-release</id>
+      <name>Spring Plugins</name>
+      <url>https://repo.spring.io/plugins-release</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>spring-milestones</id>
+      <name>Spring Milestones</name>
+      <url>http://repo.spring.io/milestone</url>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
