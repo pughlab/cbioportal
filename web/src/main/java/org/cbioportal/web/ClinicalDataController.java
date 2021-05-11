@@ -8,15 +8,16 @@ import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.Valid;
 import org.cbioportal.model.ClinicalData;
-import org.cbioportal.model.ClinicalDataCountItem.ClinicalDataType;
 import org.cbioportal.service.ClinicalDataService;
 import org.cbioportal.service.exception.PatientNotFoundException;
 import org.cbioportal.service.exception.SampleNotFoundException;
 import org.cbioportal.service.exception.StudyNotFoundException;
+import org.cbioportal.web.config.PublicApiTags;
 import org.cbioportal.web.config.annotation.PublicApi;
 import org.cbioportal.web.parameter.ClinicalDataIdentifier;
 import org.cbioportal.web.parameter.ClinicalDataMultiStudyFilter;
 import org.cbioportal.web.parameter.ClinicalDataSingleStudyFilter;
+import org.cbioportal.web.parameter.ClinicalDataType;
 import org.cbioportal.web.parameter.Direction;
 import org.cbioportal.web.parameter.HeaderKeyConstants;
 import org.cbioportal.web.parameter.PagingConstants;
@@ -41,7 +42,7 @@ import springfox.documentation.annotations.ApiIgnore;
 @PublicApi
 @RestController
 @Validated
-@Api(tags = "G. Clinical Data", description = " ")
+@Api(tags = PublicApiTags.CLINICAL_DATA, description = " ")
 public class ClinicalDataController {
 
     public static final int CLINICAL_DATA_MAX_PAGE_SIZE = 10000000;

@@ -11,7 +11,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +33,7 @@ public class GeneServiceImplTest extends BaseServiceImplTest {
 
         List<Gene> expectedGeneList = new ArrayList<>();
         Gene gene = new Gene();
+        gene.setHugoGeneSymbol(HUGO_GENE_SYMBOL);
         expectedGeneList.add(gene);
 
         Mockito.when(geneRepository.getAllGenes(KEYWORD, ALIAS, PROJECTION, PAGE_SIZE, PAGE_NUMBER, SORT, DIRECTION))
@@ -137,6 +138,7 @@ public class GeneServiceImplTest extends BaseServiceImplTest {
         
         List<Gene> expectedGeneList = new ArrayList<>();
         Gene gene = new Gene();
+        gene.setHugoGeneSymbol(HUGO_GENE_SYMBOL);
         expectedGeneList.add(gene);
 
         List<String> geneIds = new ArrayList<>();

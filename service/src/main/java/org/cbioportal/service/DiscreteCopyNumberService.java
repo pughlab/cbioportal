@@ -1,8 +1,6 @@
 package org.cbioportal.service;
 
-import org.cbioportal.model.CopyNumberCount;
-import org.cbioportal.model.CopyNumberCountByGene;
-import org.cbioportal.model.DiscreteCopyNumberData;
+import org.cbioportal.model.*;
 import org.cbioportal.model.meta.BaseMeta;
 import org.cbioportal.service.exception.MolecularProfileNotFoundException;
 
@@ -44,18 +42,6 @@ public interface DiscreteCopyNumberService {
                                                                               List<Integer> entrezGeneIds,
                                                                               List<Integer> alterations) 
         throws MolecularProfileNotFoundException;
-
-    List<CopyNumberCountByGene> getSampleCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
-        List<String> sampleIds,
-        List<Integer> entrezGeneIds,
-        List<Integer> alterations,
-        boolean includeFrequency);
-
-    List<CopyNumberCountByGene> getPatientCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
-                                                                                List<String> patientIds,
-                                                                                List<Integer> entrezGeneIds,
-                                                                                List<Integer> alterations,
-                                                                                boolean includeFrequency);
 
     List<CopyNumberCount> fetchCopyNumberCounts(String molecularProfileId, List<Integer> entrezGeneIds,
                                                 List<Integer> alterations) throws MolecularProfileNotFoundException;

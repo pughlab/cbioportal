@@ -32,9 +32,7 @@
 
 package org.mskcc.cbio.portal.model;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import org.cbioportal.model.CNA;
 import org.mskcc.cbio.portal.dao.DaoGeneOptimized;
 
 /**
@@ -45,41 +43,10 @@ public class CnaEvent {
     private int sampleId;
     private int cnaProfileId;
     private Event event;
-    
-    public static enum CNA {
-        AMP ((short)2, "Amplified"),
-        GAIN ((short)1, "Gained"),
-        DIPLOID ((short)0, "Diploid"),
-        HETLOSS ((short)-1, "Heterozygously deleted"),
-        HOMDEL ((short)-2, "Homozygously deleted");
-        
-        private short code;
-        private String desc;
-        
-        private CNA(short code, String desc) {
-            this.code = code;
-            this.desc = desc;
-        }
-        
-        private final static Map<Short, CNA> cache = new HashMap<Short, CNA>();
-        static {
-            for (CNA cna : CNA.values()) {
-                cache.put(cna.code, cna);
-            }
-        }
-        
-        public static CNA getByCode(short code) {
-            return cache.get(code);
-        }
-        
-        public short getCode() {
-            return code;
-        }
-        
-        public String getDescription() {
-            return desc;
-        }
-    }
+    private String driverFilter;
+    private String driverFilterAnnotation;
+    private String driverTiersFilter;
+    private String driverTiersFilterAnnotation;
     
     public static class Event {
         private long eventId;
@@ -217,6 +184,38 @@ public class CnaEvent {
 
     public void setEvent(Event event) {
         this.event = event;
+    }
+
+    public String getDriverFilter() {
+        return driverFilter;
+    }
+
+    public void setDriverFilter(String driverFilter) {
+        this.driverFilter = driverFilter;
+    }
+
+    public String getDriverFilterAnnotation() {
+        return driverFilterAnnotation;
+    }
+
+    public void setDriverFilterAnnotation(String driverFilterAnnotation) {
+        this.driverFilterAnnotation = driverFilterAnnotation;
+    }
+
+    public String getDriverTiersFilter() {
+        return driverTiersFilter;
+    }
+
+    public void setDriverTiersFilter(String driverTiersFilter) {
+        this.driverTiersFilter = driverTiersFilter;
+    }
+
+    public String getDriverTiersFilterAnnotation() {
+        return driverTiersFilterAnnotation;
+    }
+
+    public void setDriverTiersFilterAnnotation(String driverTiersFilterAnnotation) {
+        this.driverTiersFilterAnnotation = driverTiersFilterAnnotation;
     }
 
     @Override

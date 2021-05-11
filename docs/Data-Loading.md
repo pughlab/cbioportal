@@ -45,7 +45,7 @@ There are just a few rules to follow:
 - meta files can be named anything, as long as it starts or ends with name 'meta'. E.g. meta_test, meta.test, test.meta are all fine; metal_test and metastudy are wrong.
 - data files can be named anything and are referenced by a property `data_filename` set in the meta file. 
 
-## Validating the study
+## Import
 Once all files are in place and follow the proper format, you can [validate your files using the dataset validator script](Using-the-dataset-validator.md). 
 
 The validation can be run standalone, but it is also integrated into the [metaImport script](Using-the-metaImport-script.md), which validates the data and then loads it if validation succeeds. 
@@ -57,4 +57,4 @@ To load the data into cBioPortal, the [metaImport script](Using-the-metaImport-s
 To remove a study, the [cbioportalImporter script](Data-Loading-Maintaining-Studies.md#deleting-a-study) can be used.
 
 ## Example studies
-Examples for the different types of data are available on the [File Formats](File-Formats.md) page. The Provisional TCGA studies, downloadable from the [Data Sets section](https://www.cbioportal.org/data_sets.jsp) are complete studies that can be used as reference when creating data files.
+Examples for the different types of data are available on the [File Formats](File-Formats.md) page. The Provisional TCGA studies, downloadable from the [Data Sets section](https://www.cbioportal.org/datasets) are complete studies that can be used as reference when creating data files.

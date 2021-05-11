@@ -8,15 +8,49 @@
 #
 # docker build -f docker/web-and-data/Dockerfile -t cbioportal-container:tag-name .
 #
-# WARNING: Be careful about publishing images generated like this publicly
-# because your .git folder is exposed in the build step. We are not sure if
-# this is a security risk: stackoverflow.com/questions/56278325
-FROM maven:3.5.4 as build
-COPY $PWD /cbioportal
+# NOTE: the .git folder is included in the build stage, but excluded 
+# from the final image. No confidential information is exposed.
+# (see: stackoverflow.com/questions/56278325)
+FROM maven:3-openjdk-11 as build
+
+# download maven dependencies first to take advantage of docker caching
+COPY pom.xml                                     /cbioportal/
+COPY version.sh                                  /cbioportal/
 WORKDIR /cbioportal
+
+COPY core/pom.xml                                   core/
+COPY db-scripts/pom.xml                             db-scripts/
+COPY model/pom.xml                                  model/
+COPY persistence/pom.xml                            persistence/
+COPY persistence/persistence-api/pom.xml            persistence/persistence-api/
+COPY persistence/persistence-connections/pom.xml    persistence/persistence-connections/
+COPY persistence/persistence-mybatis/pom.xml        persistence/persistence-mybatis/
+COPY scripts/pom.xml                                scripts/
+COPY security/pom.xml                               security/
+COPY security/security-spring/pom.xml               security/security-spring/
+COPY service/pom.xml                                service/
+COPY web/pom.xml                                    web/
+RUN for subproject in */.; do cp version.sh "$subproject"; cd "$subproject"; mvn dependency:go-offline --fail-never; cd ..; done
+COPY portal/pom.xml                                 portal/
+RUN mvn dependency:go-offline --fail-never
+
+COPY $PWD /cbioportal
 RUN mvn -DskipTests clean install
 
-FROM openjdk:8-jre
+FROM openjdk:11-jre-slim
+
+# download system dependencies first to take advantage of docker caching
+RUN apt-get update; apt-get install -y --no-install-recommends \
+        build-essential \
+        default-mysql-client \
+        default-libmysqlclient-dev \
+        python3 \
+        python3-setuptools \
+        python3-dev \
+        python3-pip \
+        unzip \
+	&& rm -rf /var/lib/apt/lists/* \
+    && pip3 install wheel
 
 ENV PORTAL_WEB_HOME=/cbioportal-webapp
 
@@ -31,17 +65,7 @@ COPY --from=build /cbioportal/requirements.txt /cbioportal/requirements.txt
 
 # install build and runtime dependencies
 # ignore update failures
-RUN apt-get update; apt-get install -y --no-install-recommends \
-        build-essential \
-        libmysql-java \
-        default-libmysqlclient-dev \
-        python3 \
-        python3-setuptools \
-        python3-dev \
-        python3-pip \
-	&& rm -rf /var/lib/apt/lists/* \
-    && pip3 install wheel \
-    && pip3 install -r /cbioportal/requirements.txt
+RUN  pip3 install -r /cbioportal/requirements.txt
 
 # add importer scripts to PATH for easy running in containers
 RUN find /cbioportal/core/src/main/scripts/ -type f -executable \! -name '*.pl'  -print0 | xargs -0 -- ln -st /usr/local/bin
@@ -51,3 +75,7 @@ ENV PORTAL_HOME=/cbioportal
 
 RUN mkdir -p $PORTAL_WEB_HOME
 RUN unzip /app.war -d  $PORTAL_WEB_HOME
+
+# add entrypoint
+COPY --from=build /cbioportal/docker/web-and-data/docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["docker-entrypoint.sh"]

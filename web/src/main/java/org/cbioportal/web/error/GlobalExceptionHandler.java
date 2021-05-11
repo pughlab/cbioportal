@@ -5,6 +5,7 @@ import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -61,6 +62,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGeneNotFound(GeneNotFoundException ex) {
         return new ResponseEntity<>(new ErrorResponse("Gene not found: " + ex.getGeneId()),
                 HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(GeneWithMultipleEntrezIdsException.class)
+    public ResponseEntity<ErrorResponse> handleGeneWithMultipleEntrezIdsException(
+            GeneWithMultipleEntrezIdsException ex) {
+        return new ResponseEntity<>(
+                new ErrorResponse("Gene data error: multiple Entrez gene IDs for " + ex.getGeneId()),
+                HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(GenesetNotFoundException.class)
@@ -143,12 +152,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(MaxNumberTokensExceededException.class)
-    public ResponseEntity<ErrorResponse> handleMaxNumberTokensExceededException() {
-        ErrorResponse response = new ErrorResponse("User has reached maximum number of tokens. Tokens must be expire or be revoked before requesting a new one");
-        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
-    }
-
     @ExceptionHandler(DataAccessTokenProhibitedUserException.class)
     public ResponseEntity<ErrorResponse> handleDataAccessTokenProhibitedUserException() {
         ErrorResponse response = new ErrorResponse("You are prohibited from using Data Access Tokens");
@@ -167,4 +170,25 @@ public class GlobalExceptionHandler {
             HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(GenericAssayNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleGenericAssayNotFound(GenericAssayNotFoundException ex) {
+
+        return new ResponseEntity<>(new ErrorResponse("stableId not found: " + ex.getStableId()),
+            HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(ResourceDefinitionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceDefinitionNotFound(ResourceDefinitionNotFoundException ex) {
+        return new ResponseEntity<>(new ErrorResponse("Resource not found: " + ex.getResourceId()),
+                HttpStatus.NOT_FOUND);
+    }
+    
+    @ExceptionHandler(BadSqlGrammarException.class)
+    public ResponseEntity<ErrorResponse> handleBadSqlGrammar(BadSqlGrammarException ex) {
+        ex.printStackTrace(); // we still want this to show up in the logs
+        return new ResponseEntity<>(
+            new ErrorResponse("SQL exception. If you are a maintainer of this instance, see logs for details."),
+            HttpStatus.INTERNAL_SERVER_ERROR
+        );
+    }
 }

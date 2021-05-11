@@ -1,128 +1,69 @@
-/*
- * Copyright (c) 2019 The Hyve B.V.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
- * FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
- * is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
- * obligations to provide maintenance, support, updates, enhancements or
- * modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
- * liable to any party for direct, indirect, special, incidental or
- * consequential damages, including lost profits, arising out of the use of this
- * software and its documentation, even if Memorial Sloan-Kettering Cancer
- * Center has been advised of the possibility of such damage.
- */
-
-/*
- * This file is part of cBioPortal.
- *
- * cBioPortal is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 package org.cbioportal.model;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Treatment implements Serializable {
+    private String treatment;
+    private String studyId;
+    private String patientId;
+    private Integer start;
+    private Integer stop;
 
-    private int id;
-    private int geneticEntityId;
-    private String stableId;
-    private String name;
-    private String description;
-    private String refLink;
-   
-    /**
-     * @return the id
-     */
-    public int getInternalId() {
-        return id;
+    public String getTreatment() {
+        return treatment;
     }
 
-    /**
-     * @param id the id to set
-     */
-    public void setInternalId(int id) {
-        this.id = id;
+    public void setTreatment(String treatment) {
+        this.treatment = treatment;
     }
 
-    /**
-     * @return the geneticEntityId
-     */
-    public int getGeneticEntityId() {
-        return geneticEntityId;
+    public String getStudyId() {
+        return studyId;
     }
 
-    /**
-     * @param geneticEntityId the geneticEntityId to set
-     */
-    public void setGeneticEntityId(Integer geneticEntityId) {
-        this.geneticEntityId = geneticEntityId;
+    public void setStudyId(String studyId) {
+        this.studyId = studyId;
     }
 
-    /**
-     * @return the stableId
-     */
-    public String getStableId() {
-        return stableId;
+    public String getPatientId() {
+        return patientId;
     }
 
-    /**
-     * @param stableId the stableId to set
-     */
-    public void setStableId(String stableId) {
-        this.stableId = stableId;
+    public void setPatientId(String patientId) {
+        this.patientId = patientId;
     }
 
-    /**
-     * @return the name
-     */
-    public String getName() {
-        return name;
+    public Integer getStart() {
+        return start;
     }
 
-    /**
-     * @param name the name to set
-     */
-    public void setName(String name) {
-        this.name = name;
+    public void setStart(Integer start) {
+        this.start = start;
     }
 
-    /**
-     * @return the description
-     */
-    public String getDescription() {
-        return description;
+    public Integer getStop() {
+        return stop;
     }
 
-    /**
-     * @param description the description to set
-     */
-    public void setDescription(String description) {
-        this.description = description;
+    public void setStop(Integer stop) {
+        this.stop = stop;
     }
 
-    /**
-     * @return the refLink
-     */
-    public String getRefLink() {
-        return refLink;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Treatment)) return false;
+        Treatment treatment1 = (Treatment) o;
+        return getTreatment().equals(treatment1.getTreatment()) &&
+            getStudyId().equals(treatment1.getStudyId()) &&
+            getPatientId().equals(treatment1.getPatientId()) &&
+            Objects.equals(getStart(), treatment1.getStart()) &&
+            Objects.equals(getStop(), treatment1.getStop());
     }
 
-    /**
-     * @param refLink the refLink to set
-     */
-    public void setRefLink(String refLink) {
-        this.refLink = refLink;
+    @Override
+    public int hashCode() {
+        return Objects.hash(getTreatment(), getStudyId(), getPatientId(), getStart(), getStop());
     }
 }

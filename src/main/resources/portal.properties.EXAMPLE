@@ -57,6 +57,9 @@ skin.right_nav.whats_new_blurb=<p> &bull;<a href="news.jsp"> <b>New data and fea
 # setting controlling the blurb
 skin.blurb=The cBioPortal for Cancer Genomics provides <b>visualization</b>, <b>analysis</b> and <b>download</b> of large-scale cancer genomics data sets.  <p>Please adhere to <u><a href="http://cancergenome.nih.gov/abouttcga/policies/publicationguidelines"> the TCGA publication guidelines</a></u> when using TCGA data in your publications.</p> <p><b>Please cite</b> <a href="http://www.ncbi.nlm.nih.gov/pubmed/23550210">Gao et al. <i>Sci. Signal.</i> 2013</a> &amp;  <a href="http://cancerdiscovery.aacrjournals.org/content/2/5/401.abstract">Cerami et al. <i>Cancer Discov.</i> 2012</a> when publishing results based on cBioPortal.</p>
 
+# setting controlling the citation below the blurb
+# skin.citation_rule_text=Please cite: <a href="http://cancerdiscovery.aacrjournals.org/content/2/5/401.abstract" target="_blank">Cerami et al., 2012</a> &amp; <a href="http://www.ncbi.nlm.nih.gov/pubmed/23550210" target="_blank">Gao et al., 2013</a>
+
 # setting controlling the footer
 skin.footer= | <a href="http://www.mskcc.org/mskcc/html/44.cfm">MSKCC</a> | <a href="http://cancergenome.nih.gov/">TCGA</a>
 
@@ -75,11 +78,14 @@ skin.right_nav.show_whats_new=true
 # settings controlling what to show in the right navigation bar
 skin.study_view.link_text=To build your own case set, try out our enhanced Study View.
 
+# setting controlling the default setting for filtering genes in patient view
+# skin.patientview.filter_genes_profiled_all_samples=false
+
 ## enable and set this property to specify a study group to be used to identify public studies for which no specific authorization entries are needed in the `authorities` table
 # always_show_study_group=
 
 ## change the `-Dauthenticate=` JVM argument to configure
-## which method of authentication to use (false, googleplus, social_auth_google, social_auth_microsoft, saml, openid, ad, ldap, noauthsessionservice)
+## which method of authentication to use (false, googleplus, social_auth_google, social_auth_microsoft, saml, openid, noauthsessionservice)
 
 ## Should the permissions for groups and users be filtered by this instance's app.name?
 ## (true means the system only handles "CBIOPORTAL:someGroupPermission" groups, false means "someGroupPermission" works)
@@ -94,6 +100,8 @@ microsoftlive.consumer.secret=
 
 ## SAML settings
 saml.sp.metadata.entityid=
+# change this url if behind reverse proxy that handles SSL, see docs/Authenticating-Users-via-SAML.md
+saml.sp.metadata.entityBaseURL=#{null}
 saml.idp.metadata.location=
 saml.idp.metadata.entityid=
 # saml keystore settings:
@@ -113,34 +121,29 @@ saml.custom.userservice.class=org.cbioportal.security.spring.authentication.saml
 # Change this to configure to configure a custom logout URL: (default: /login.jsp?logout_success=true)
 saml.logout.url=/login.jsp?logout_success=true
 
-## settings to connect to an Active Directory domain controller
-ad.domain=
-ad.url=
-## configuration for the LDAP access
-ldap.user_search_base=DC=example,DC=com
-ldap.url=ldap://ldap.example.com
-ldap.manager.dn=CN=manager-user,DC=example,DC=com
-ldap.manager.password=PASSWORD
-## The following attributes for are good for ActiveDirectory, for OpenLDAP use "uid" for username
-ldap.attributes.username=sAMAccountName
-#ldap.attributes.username=uid
-ldap.attributes.last_name=sn
-ldap.attributes.given_name=givenName
-ldap.attributes.email=mail
-
 # data access token settings
 dat.unauth_users=
 dat.method=none
 dat.ttl_seconds=2592000
 dat.uuid.max_number_per_user=1
-dat.uuid.revoke_other_tokens=true
 dat.jwt.secret_key=
+
+# OAuth2 token data access settings
+#dat.oauth2.clientId=<client-id>
+#dat.oauth2.clientSecret=<client-secret>
+#dat.oauth2.issuer=<token-issuer>
+#dat.oauth2.accessTokenUri=<authorization-server-url>/.../token
+#dat.oauth2.userAuthorizationUri=<authorization-server-url>/.../auth
+#dat.oauth2.jwkUrl=<authorization-server-url>/.../certs
+#dat.oauth2.redirectUri=<cbioportal-url>/.../api/data-access-token/oauth2
+#dat.oauth2.jwtRolesPath=resource_access::cbioportal::roles
 
 # study view settings
 # always show studies with this group
 always_show_study_group=
-mdacc.heatmap.study.meta.url=//bioinformatics.mdanderson.org/study2url?studyid=
-mdacc.heatmap.study.url=//bioinformatics.mdanderson.org/TCGA/NGCHMPortal/?
+
+# mdacc heatmap integration
+#show.mdacc.heatmap=true
 
 # patient view settings
 patient_view_placeholder=false
@@ -148,14 +151,25 @@ digitalslidearchive.iframe.url=http://cancer.digitalslidearchive.net/index_mskcc
 digitalslidearchive.meta.url=http://cancer.digitalslidearchive.net/local_php/get_slide_list_from_db_groupid_not_needed.php?slide_name_filter=
 tumor_image.url=http://cbio.mskcc.org/cancergenomics/tcga-tumor-images/
 tcga_path_report.url=https://github.com/cbioportal/datahub/raw/master/tcga/pathology_reports/pathology_reports.txt
-mdacc.heatmap.patient.url=//bioinformatics.mdanderson.org/TCGA/NGCHMPortal/?participant=
-mdacc.heatmap.meta.url=//bioinformatics.mdanderson.org/participant2maps?participant=
 
 # various url's
 segfile.url=http://cbio.mskcc.org/cancergenomics/gdac-portal/seg/
 
+
+# The default OncoKB instance, the portal is connecting to, does not include any therapeutic information and the token is not required.
+# If you wish to include such information, please consider obtaining a license to support future OncoKB development by following
+# https://docs.cbioportal.org/2.4-integration-with-other-webservices/oncokb-data-access.
+
 # Enable OncoKB annotation (true, false)
 show.oncokb=true
+
+# The URL of the OncoKB instance to connect to.
+# The default address does not require authentication and is freely to use.
+oncokb.public_api.url=https://public.api.oncokb.org/api/v1
+
+# Your OncoKB Token which an be found under https://www.oncokb.org/account/settings
+oncokb.token=
+
 
 # Enable Chang's hotspot list (true, false)
 show.hotspot=true
@@ -166,6 +180,22 @@ show.civic=false
 
 # Link to My Cancer Genome. Please disable (set to false) when using cBioPortal with patient identifiable data due My Cancer Genome license restrictions.
 mycancergenome.show=true
+
+# Enable transcript switch dropdown (true, false)
+# show.transcript_dropdown=false
+
+# Show/hide p- and q-values in survival types table (default is true)
+# survival.show_p_q_values_in_survival_type_table=false
+
+# Set initial x-axis limit for survival plot (by default, initial limit will be the latest event in the data)
+# survival.initial_x_axis_limit=120
+
+# Set Genome Nexus annotation sources, please list all sources name with comma-separated.
+# Available sources: mutation_assessor
+# show.genomenexus.annotation_sources=mutation_assessor
+
+# Enable SIGNAL column in mutations table(true, false)
+# show.signal=false
 
 # igv bam linking
 igv.bam.linking=
@@ -189,9 +219,6 @@ google_analytics_profile_id=
 
 # genomespace linking
 genomespace=true
-
-# set this to true if you update cancer studies in your production database without shutting the web server
-recache_study_after_update=false
 
 # session-service url: http://[host]:[port]/[session_service_app]/api/sessions/[portal_instance]/
 # example session-service url: http://localhost:8080/session_service/api/sessions/public_portal/
@@ -232,11 +259,20 @@ oncoprint.hotspots.default=true
 # Custom gene sets
 # querypage.setsofgenes.location=file:/<path>
 
-# valid cache types are (heap, disk, hybrid), or use 'none' to disable use of Ehcache
-ehcache.cache_type=none
-#ehcache.xml_configuration=/ehcache.xml
-# Enable cache statistics endpoint for Ehcache monitoring
+# valid cache types are (ehcache-heap, ehcache-disk, ehcache-hybrid, redis), or use 'no-cache' to disable caching
+# caution : the 'redis' caching option will likely cause a conflict when installing the portal in a tomcat installation which uses redisson for session management
+persistence.cache_type=no-cache
+# Enable cache statistics endpoint for cache monitoring
 #cache.statistics_endpoint_enabled=false
+
+# Redis properties
+#redis.leader_address=
+#redis.follower_address=
+#redis.database=
+#redis.password=
+
+# Ehcache properties
+#ehcache.xml_configuration=/ehcache.xml
 
 # Properties for specifying cache size constraints
 # - Zero is not an accepted value, will break deployment
@@ -265,10 +301,6 @@ ehcache.cache_type=none
 # Enable/Disable quick search (currently in beta, default is false)
 # quick_search.enabled=true
 
-# MatchMiner AWS url
-matchminer.url=
-matchminer.token=
-
 # enable/disable hrrs logging
 # hrrs can be used for debugging - when enabled incoming web requests
 # will be logged into the specified directory
@@ -276,3 +308,29 @@ matchminer.token=
 # see: https://github.com/vy/hrrs/blob/master/README.md
 #hrrs.logging.filepath=
 #hrrs.enable.logging=false
+
+# ensembl URL template for transcript lookup in Mutations tab. Default is http://grch37.ensembl.org/homo_sapiens/Transcript/Summary?t=<%= transcriptId %>
+#ensembl.transcript_url=http://ensembl.org/homo_sapiens/Transcript/Summary?t=<%= transcriptId %>
+
+# Enable/disable Persistent Cache (true, false)
+# The Persistent Cache is a frontend feature that is used to cache semi static
+# data produced by APIs. It uses IndexedDB as a means for persistent storage.
+# This feature is disabled by default.
+# enable_persistent_cache=true
+
+# Limit the size of gene queries (number). gene count * sample count < query_product_limit
+# This limit is enforced on the frontend.
+# query_product_limit=1000000
+
+# Enable gsva to query
+# skin.show_gsva=true
+
+# Compress some particularly large request bodies. enable_request_body_gzip_compression enables the feature, and
+# request_gzip_body_size_bytes sets the maximum allowable uncompressed request body size in bytes. Requests larger than
+# this value will be rejected. If unset, the default value will be 50000000, or 50 Mb.
+# enable_request_body_gzip_compression=true
+# request_gzip_body_size_bytes=80000000
+
+# Installation map URL for installation map iframes. 
+# If blank or commented out, no map will be shown and that page will be hidden.
+# installation_map_url=https://installationmap.netlify.app/

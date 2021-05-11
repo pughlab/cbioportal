@@ -2,99 +2,123 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="org.cbioportal.persistence.mybatis.TreatmentMapper">
-    <cache readOnly="true"/>
-
-    <sql id="select">
-        treatment.ID AS "${prefix}id",
-        treatment.STABLE_ID AS "${prefix}stableId",
-        treatment.NAME as "${prefix}name",
-        treatment.DESCRIPTION as "${prefix}description",
-        treatment.LINKOUT_URL as "${prefix}refLink"
-    </sql>
-
-    <select id="getMetaTreatments" resultType="org.cbioportal.model.meta.BaseMeta">
+    <select id="getAllTreatments" resultType="org.cbioportal.model.Treatment">
         SELECT
-        COUNT(*) AS totalCount
-        FROM treatment
-        <if test="list != null">
-            WHERE treatment.STABLE_ID IN
-            <foreach item="treatmentId" collection="list" open="(" separator="," close=")">
-                #{treatmentId}
-            </foreach>
-        </if>
+            clinical_event_data.VALUE as treatment,
+            patient.STABLE_ID as patientId,
+            cancer_study.CANCER_STUDY_IDENTIFIER as studyId,
+            clinical_event.START_DATE as start,
+            clinical_event.STOP_DATE as stop
+        FROM
+            clinical_event
+            INNER JOIN clinical_event_data ON clinical_event.CLINICAL_EVENT_ID = clinical_event_data.CLINICAL_EVENT_ID
+            INNER JOIN patient ON clinical_event.PATIENT_ID = patient.INTERNAL_ID
+            INNER JOIN sample ON patient.INTERNAL_ID = sample.PATIENT_ID
+            INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        <include refid="where"/>
+            AND clinical_event_data.KEY = 'AGENT'
     </select>
 
-    <select id="getMetaTreatmentsInStudies" resultType="org.cbioportal.model.meta.BaseMeta">
+    <select id="getAllSamples" resultType="org.cbioportal.model.ClinicalEventSample">
         SELECT
-        COUNT (DISTINCT treatment.STABLE_ID) AS totalCount
-        FROM treatment
-        <if test="list != null">
-                LEFT JOIN
-            genetic_entity AS ge ON ge.ID = treatment.GENETIC_ENTITY_ID
-                LEFT JOIN
-            genetic_alteration AS ga ON ga.GENETIC_ENTITY_ID = ge.ID
-                LEFT JOIN
-            genetic_profile AS gp ON gp.GENETIC_PROFILE_ID = ga.GENETIC_PROFILE_ID
-                LEFT JOIN
-            cancer_study AS cs ON cs.CANCER_STUDY_ID = gp.CANCER_STUDY_ID
-            WHERE cs.CANCER_STUDY_IDENTIFIER IN
-            <foreach item="studyId" collection="list" open="(" separator="," close=")">
-                #{studyId}
-            </foreach>
-        </if>
+            sample.STABLE_ID as sampleId,
+            patient.STABLE_ID as patientId,
+            cancer_study.CANCER_STUDY_IDENTIFIER as studyId,
+            clinical_event.START_DATE as timeTaken
+        FROM
+            clinical_event
+            INNER JOIN clinical_event_data ON clinical_event.CLINICAL_EVENT_ID = clinical_event_data.CLINICAL_EVENT_ID
+            INNER JOIN patient ON clinical_event.PATIENT_ID = patient.INTERNAL_ID
+            INNER JOIN sample ON clinical_event_data.VALUE = sample.STABLE_ID
+            INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        <include refid="where"/>
+            AND clinical_event_data.KEY = 'SAMPLE_ID'
     </select>
 
-    <select id="getTreatmentsInStudies" resultType="org.cbioportal.model.Treatment">
-        SELECT DISTINCT
-        <include refid="select">
-            <property name="prefix" value=""/>
-        </include>
-        FROM treatment
-        <if test="studyIds != null">
-                LEFT JOIN
-            genetic_entity AS ge ON ge.ID = treatment.GENETIC_ENTITY_ID
-                LEFT JOIN
-            genetic_alteration AS ga ON ga.GENETIC_ENTITY_ID = ge.ID
-                LEFT JOIN
-            genetic_profile AS gp ON gp.GENETIC_PROFILE_ID = ga.GENETIC_PROFILE_ID
-                LEFT JOIN
-            cancer_study AS cs ON cs.CANCER_STUDY_ID = gp.CANCER_STUDY_ID
-            WHERE cs.CANCER_STUDY_IDENTIFIER IN
-            <foreach item="studyId" collection="studyIds" open="(" separator="," close=")">
-                #{studyId}
-            </foreach>
-        </if>
-        <if test="sortBy != null and projection != 'ID'">
-            ORDER BY ${sortBy} ${direction}
-        </if>
-        <if test="projection == 'ID'">
-            ORDER BY stableId ASC
-        </if>
-        <if test="limit != null and limit != 0">
-            LIMIT #{limit} OFFSET #{offset}
-        </if>
+    <select id="getAllShallowSamples" resultType="org.cbioportal.model.ClinicalEventSample">
+        SELECT
+            sample.STABLE_ID as sampleId,
+            patient.STABLE_ID as patientId,
+            cancer_study.CANCER_STUDY_IDENTIFIER as studyId
+        FROM
+            sample
+            INNER JOIN patient ON sample.PATIENT_ID = patient.INTERNAL_ID
+            INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        <include refid="where"/>
     </select>
 
-    <select id="getTreatmentByStableId" resultType="org.cbioportal.model.Treatment">
+    <select id="getAllUniqueTreatments" resultType="java.lang.String">
+        SELECT 
+            DISTINCT clinical_event_data.VALUE
+        FROM
+            clinical_event
+            INNER JOIN clinical_event_data ON clinical_event.CLINICAL_EVENT_ID = clinical_event_data.CLINICAL_EVENT_ID
+            INNER JOIN patient ON clinical_event.PATIENT_ID = patient.INTERNAL_ID
+            INNER JOIN sample ON patient.INTERNAL_ID = sample.PATIENT_ID
+            INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        <include refid="where"/>
+            AND clinical_event_data.KEY = 'AGENT'
+    </select>
+
+    <select id="getTreatmentCount" resultType="java.lang.Integer">
         SELECT
-        <include refid="select">
-            <property name="prefix" value=""/>
-        </include>
-        FROM treatment
-        WHERE treatment.STABLE_ID = #{treatmentId}
+            COUNT(clinical_event.PATIENT_ID)
+        FROM
+            clinical_event
+            INNER JOIN clinical_event_data ON clinical_event.CLINICAL_EVENT_ID = clinical_event_data.CLINICAL_EVENT_ID
+            INNER JOIN patient ON clinical_event.PATIENT_ID = patient.INTERNAL_ID
+            INNER JOIN sample ON patient.INTERNAL_ID = sample.PATIENT_ID
+            INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        <include refid="where"/>
+            AND clinical_event_data.KEY = 'AGENT'
+    </select>
+
+    <select id="getSampleCount" resultType="java.lang.Integer">
+        SELECT
+            COUNT(sample.STABLE_ID)
+        FROM
+            clinical_event
+            INNER JOIN clinical_event_data ON clinical_event.CLINICAL_EVENT_ID = clinical_event_data.CLINICAL_EVENT_ID
+            INNER JOIN patient ON clinical_event.PATIENT_ID = patient.INTERNAL_ID
+            INNER JOIN sample ON patient.INTERNAL_ID = sample.PATIENT_ID
+            INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        <include refid="where"/>
+            AND clinical_event_data.KEY = 'SAMPLE_ID'
     </select>
     
-    <select id="fetchTreatments" resultType="org.cbioportal.model.Treatment">
-        SELECT
-        <include refid="select">
-            <property name="prefix" value=""/>
-        </include>
-        FROM treatment
-        WHERE treatment.STABLE_ID IN
-        <foreach item="treatmentId" collection="list" open="(" separator="," close=")">
-            #{treatmentId}
-        </foreach>
-        ORDER BY stableId ASC
-    </select>
 
+    <sql id="where">
+        <where>
+            <if test="sampleIds == null and studyIds != null">
+                cancer_study.CANCER_STUDY_IDENTIFIER IN
+                <if test="studyIds.isEmpty()">
+                    (NULL)
+                </if>
+                <if test="!studyIds.isEmpty()">
+                    <foreach item="item" collection="studyIds" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </if>
+            </if>
+            <if test="sampleIds != null">
+                <if test="@java.util.Arrays@stream(studyIds.toArray()).distinct().count() == 1">
+                    cancer_study.CANCER_STUDY_IDENTIFIER = #{studyIds[0]} AND
+                    sample.STABLE_ID IN
+                    <foreach item="item" collection="sampleIds" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                </if>
+                <if test="@java.util.Arrays@stream(studyIds.toArray()).distinct().count() > 1">
+                    cancer_study.CANCER_STUDY_IDENTIFIER IN
+                        <foreach item="item" collection="@java.util.Arrays@stream(studyIds.toArray()).distinct().collect(@java.util.stream.Collectors@toList())" open="(" separator="," close=")">
+                        #{item}
+                    </foreach>
+                    AND (cancer_study.CANCER_STUDY_IDENTIFIER, sample.STABLE_ID) IN
+                    <foreach index="i" collection="sampleIds" open="(" separator="," close=")">
+                        (#{studyIds[${i}]}, #{sampleIds[${i}]})
+                    </foreach>
+                </if>
+            </if>
+        </where>
+    </sql>
 </mapper>

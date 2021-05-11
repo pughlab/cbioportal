@@ -38,12 +38,6 @@ Below you can find the complete list of all the available skin properties.
 			<td>Any HTML text</td>
 		</tr>
 		<tr>
-			<td>skin.custom_header_tabs</td>
-			<td>defines custom tabs to be added to the header. For each page to be added, two values have to be provided. The first is the page, the second the tab-title. e.g. skin.custom_header_tabs=networks.jsp, Networks, oncoprinter.jsp, Oncoprinter</td>
-			<td></td>
-			<td>comma separated text</td>
-		</tr>
-		<tr>
 			<td>skin.example_study_queries</td>
 			<td>\n-separated list of study query suggestions displayed when clicking the ‘select a cancer study' search box</td>
 			<td>tcga\ntcga -provisional\ntcga -moratorium\ntcga OR icgc\n-"cell line"\nprostate mskcc\nesophageal OR stomach\nserous\nbreast</td>
@@ -58,7 +52,7 @@ Below you can find the complete list of all the available skin properties.
 		<tr>
 			<td>skin.data_sets_header</td>
 			<td>sets the text that is shown below the Data Sets title, after clicking on the "DATA SETS" tab in the header. By adding &lt;NUM_CANCER_STUDIES&gt; to the text, the number of cancer studies is inserted</td>
-			<td>Data sets of TCGA studies were downloaded from Broad Firehose (http://gdac.broadinstitute.org) and updated monthly. In some studies, data sets were from the TCGA working groups directly.</td>
+			<td>Data sets of TCGA studies were downloaded from Broad Firehose (https://gdac.broadinstitute.org) and updated monthly. In some studies, data sets were from the TCGA working groups directly.</td>
 			<td>Any HTML text</td>
 		</tr>
       <tr>
@@ -217,8 +211,30 @@ Below you can find the complete list of all the available skin properties.
             <td>3</td>
             <td>integer</td>
         </tr>
+		<tr>
+            <td>skin.patientview.filter_genes_profiled_all_samples</td>
+            <td>sets default setting for the genes filter in patient view to only show mutations for genes that were profiled for mutations or CNA's in all samples of that patient. If unset, patient view will show mutations/CNA's for genes that were profiled in any sample.</td>
+            <td>false</td>
+            <td>true / false</td>
+        </tr>
+      <tr>
+            <td>google_analytics_profile_id</td>
+            <td>enables google analaytics tracking on your site</td>
+            <td>disabled</td>
+            <td>string</td>
+        </tr>
+                
+           
+        
+
+        
+       
+        
    </tbody>
 </table>
+
+# Customization when using Docker
+To add images or other files to the Docker image one can mount them inside the `cbioportal-webapp` folder. For example to use a custom logo for `skin.right_logo`. Mount the image inside the`cbioportal-webapp` folder with `-v /path/to/custom_logo.png:/cbioportal-webapp/images/custom_logo.png` and set `skin.right_logo=custom_logo.png` in your properties file.
 
 # Creating your own local news/about or FAQ page
 

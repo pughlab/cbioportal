@@ -2,7 +2,7 @@ package org.mskcc.cbio.portal.dao;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.mskcc.cbio.portal.util.DatabaseProperties;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Data source that self-initializes based on cBioPortal configuration.
@@ -35,5 +35,6 @@ public class JdbcDataSource extends BasicDataSource {
         this.setMinEvictableIdleTimeMillis(30000);
         this.setTestOnBorrow(true);
         this.setValidationQuery("SELECT 1");
+        this.setJmxName("org.cbioportal:DataSource=" + database);
     }
 }

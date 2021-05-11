@@ -12,7 +12,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @RunWith(SpringJUnit4ClassRunner.class)
@@ -22,7 +21,7 @@ public class MutationMyBatisRepositoryTest {
 
     @Autowired
     private MutationMyBatisRepository mutationMyBatisRepository;
-    
+
     @Test
     public void getMutationsInMolecularProfileBySampleListIdIdProjection() throws Exception {
 
@@ -35,7 +34,7 @@ public class MutationMyBatisRepositoryTest {
         Assert.assertEquals("TCGA-A1-A0SB-01", mutation.getSampleId());
         Assert.assertEquals((Integer) 207, mutation.getEntrezGeneId());
     }
-    
+
     @Test
     public void getMutationsInMolecularProfileBySampleListIdSummaryProjection() throws Exception {
 
@@ -79,7 +78,7 @@ public class MutationMyBatisRepositoryTest {
         List<Integer> entrezGeneIds = new ArrayList<>();
         entrezGeneIds.add(207);
         entrezGeneIds.add(208);
-        
+
         List<Mutation> result =  mutationMyBatisRepository.getMutationsInMolecularProfileBySampleListId(
             "study_tcga_pub_mutations", "study_tcga_pub_all", entrezGeneIds, null, "SUMMARY", null, null, null, null);
 
@@ -158,6 +157,15 @@ public class MutationMyBatisRepositoryTest {
         Assert.assertEquals((Integer) 207, gene.getEntrezGeneId());
         Assert.assertEquals("AKT1", gene.getHugoGeneSymbol());
         Assert.assertEquals("protein-coding", gene.getType());
+        AlleleSpecificCopyNumber alleleSpecificCopyNumber = mutation.getAlleleSpecificCopyNumber();
+        Assert.assertEquals((Integer) (3), alleleSpecificCopyNumber.getAscnIntegerCopyNumber());
+        Assert.assertEquals("FACETS", alleleSpecificCopyNumber.getAscnMethod());
+        Assert.assertEquals((Float) (1.25f), alleleSpecificCopyNumber.getCcfExpectedCopiesUpper());
+        Assert.assertEquals((Float) (1.75f), alleleSpecificCopyNumber.getCcfExpectedCopies());
+        Assert.assertEquals("CLONAL", alleleSpecificCopyNumber.getClonal());
+        Assert.assertEquals((Integer) (2), alleleSpecificCopyNumber.getMinorCopyNumber());
+        Assert.assertEquals((Integer) (1), alleleSpecificCopyNumber.getExpectedAltCopies());
+        Assert.assertEquals((Integer) (4), alleleSpecificCopyNumber.getTotalCopyNumber());
     }
 
     @Test
@@ -198,7 +206,7 @@ public class MutationMyBatisRepositoryTest {
         List<Integer> entrezGeneIds = new ArrayList<>();
         entrezGeneIds.add(207);
         entrezGeneIds.add(208);
-        
+
         MutationMeta result = mutationMyBatisRepository.getMetaMutationsInMolecularProfileBySampleListId(
             "study_tcga_pub_mutations", "study_tcga_pub_all", entrezGeneIds);
 
@@ -208,26 +216,27 @@ public class MutationMyBatisRepositoryTest {
 
     @Test
     public void getMutationsInMultipleMolecularProfiles() throws Exception {
-        
+
         List<String> molecularProfileIds = new ArrayList<>();
         molecularProfileIds.add("acc_tcga_mutations");
         molecularProfileIds.add("study_tcga_pub_mutations");
-        
+
         List<String> sampleIds = new ArrayList<>();
         sampleIds.add("TCGA-A1-B0SO-01");
         sampleIds.add("TCGA-A1-A0SH-01");
-        
-        List<Mutation> result = mutationMyBatisRepository.getMutationsInMultipleMolecularProfiles(molecularProfileIds, 
+
+        List<Mutation> result = mutationMyBatisRepository.getMutationsInMultipleMolecularProfiles(molecularProfileIds,
             sampleIds, null, "SUMMARY", null, null, null, null);
-        
+
         Assert.assertEquals(3, result.size());
-        Mutation mutation1 = result.get(0);
+
+        Mutation mutation1 = result.get(2);
         Assert.assertEquals("study_tcga_pub_mutations", mutation1.getMolecularProfileId());
         Assert.assertEquals("TCGA-A1-A0SH-01", mutation1.getSampleId());
         Mutation mutation2 = result.get(1);
         Assert.assertEquals("study_tcga_pub_mutations", mutation2.getMolecularProfileId());
         Assert.assertEquals("TCGA-A1-A0SH-01", mutation2.getSampleId());
-        Mutation mutation3 = result.get(2);
+        Mutation mutation3 = result.get(0);
         Assert.assertEquals("acc_tcga_mutations", mutation3.getMolecularProfileId());
         Assert.assertEquals("TCGA-A1-B0SO-01", mutation3.getSampleId());
     }
@@ -242,7 +251,7 @@ public class MutationMyBatisRepositoryTest {
         List<String> sampleIds = new ArrayList<>();
         sampleIds.add("TCGA-A1-B0SO-01");
         sampleIds.add("TCGA-A1-A0SH-01");
-        
+
         MutationMeta result = mutationMyBatisRepository.getMetaMutationsInMultipleMolecularProfiles(molecularProfileIds,
             sampleIds, null);
 
@@ -256,10 +265,10 @@ public class MutationMyBatisRepositoryTest {
         List<String> sampleIds = new ArrayList<>();
         sampleIds.add("TCGA-A1-A0SH-01");
         sampleIds.add("TCGA-A1-A0SO-01");
-        
-        List<Mutation> result = mutationMyBatisRepository.fetchMutationsInMolecularProfile("study_tcga_pub_mutations", 
+
+        List<Mutation> result = mutationMyBatisRepository.fetchMutationsInMolecularProfile("study_tcga_pub_mutations",
             sampleIds, null, null, "SUMMARY", null, null, null, null);
-        
+
         Assert.assertEquals(3, result.size());
         Assert.assertEquals("study_tcga_pub_mutations", result.get(0).getMolecularProfileId());
         Assert.assertEquals("TCGA-A1-A0SH-01", result.get(0).getSampleId());
@@ -284,36 +293,10 @@ public class MutationMyBatisRepositoryTest {
     }
 
     @Test
-    public void getSampleCountByEntrezGeneIds() throws Exception {
-
-        List<Integer> entrezGeneIds = new ArrayList<>();
-        entrezGeneIds.add(672);
-        
-        List<MutationCountByGene> result = mutationMyBatisRepository.getSampleCountByEntrezGeneIdsAndSampleIds(
-            "study_tcga_pub_mutations", null, entrezGeneIds);
-        
-        Assert.assertEquals(1, result.size());
-        Assert.assertEquals((Integer) 4, result.get(0).getNumberOfAlteredCases());
-    }
-
-    @Test
-    public void getPatientCountByEntrezGeneIds() throws Exception {
-
-        List<Integer> entrezGeneIds = new ArrayList<>();
-        entrezGeneIds.add(208);
-        
-        List<MutationCountByGene> result = mutationMyBatisRepository.getPatientCountInMultipleMolecularProfiles(
-            Arrays.asList("acc_tcga_mutations"), null, entrezGeneIds);
-        
-        Assert.assertEquals(1, result.size());
-        Assert.assertEquals((Integer) 1, result.get(0).getNumberOfAlteredCases());
-    }
-
-    @Test
     public void getMutationCountByPosition() throws Exception {
-        
+
         MutationCountByPosition result = mutationMyBatisRepository.getMutationCountByPosition(672, 61, 936);
-        
+
         Assert.assertEquals((Integer) 672, result.getEntrezGeneId());
         Assert.assertEquals((Integer) 61, result.getProteinPosStart());
         Assert.assertEquals((Integer) 936, result.getProteinPosEnd());

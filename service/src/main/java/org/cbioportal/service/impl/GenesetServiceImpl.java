@@ -53,4 +53,14 @@ public class GenesetServiceImpl implements GenesetService {
 	        
 	        return genesetRepository.fetchGenesets(genesetIds);
 	    }
+	
+	@Override
+	public String getGenesetVersion() {
+		String genesetVersion = genesetRepository.getGenesetVersion();
+		if (genesetVersion == null) {
+			return "";
+		} else {
+			return genesetVersion;
+		}
+	}
 }

@@ -39,9 +39,17 @@ package org.mskcc.cbio.portal.scripts;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
-import org.mskcc.cbio.portal.dao.DaoTreatment;
-import org.mskcc.cbio.portal.model.Treatment;
+import org.cbioportal.model.EntityType;
+import org.cbioportal.model.GeneticEntity;
+import org.cbioportal.model.meta.GenericAssayMeta;
+import org.mskcc.cbio.portal.dao.DaoException;
+import org.mskcc.cbio.portal.dao.DaoGenericAssay;
+import org.mskcc.cbio.portal.dao.DaoGeneticEntity;
+import org.mskcc.cbio.portal.model.GeneticAlterationType;
 import org.mskcc.cbio.portal.util.ProgressMonitor;
 
 import joptsimple.OptionParser;
@@ -62,20 +70,32 @@ public class ImportGenericAssayEntity extends ConsoleRunnable {
         super(args);
     }
 
-    public ImportGenericAssayEntity(File dataFile, boolean updateInfo) {
+    public ImportGenericAssayEntity(File dataFile, EntityType entityType, String additionalProperties, boolean updateInfo) {
         // fake the console arguments required by the ConsoleRunnable class
-        super( new String[]{"--data", dataFile.getAbsolutePath(), "--update-info", updateInfo?"1":"0"});
+        super( new String[]{"--data", dataFile.getAbsolutePath(), "--entity-type", entityType.name(), "--additional-properties", additionalProperties, "--update-info", updateInfo?"1":"0"});
 	}
 
 	@Override
     public void run() {
         try {
-            String progName = "ImportTreatments";
-            String description = "Import treatment records from treatment response files.";
+            String progName = "ImportGenericAssay";
+            String description = "Import generic assay records from generic assay response files.";
             
             OptionParser parser = new OptionParser();
-            OptionSpec<String> data = parser.accepts("data", "Treatment data file")
+            OptionSpec<String> data = parser.accepts("data", "Generic assay data file")
             .withRequiredArg().ofType(String.class);
+
+            // require entity type
+            OptionSpec<String> entityType = parser.accepts("entity-type", "Entity type")
+            .withRequiredArg().ofType(String.class);
+
+            // don't require additional properties
+            OptionSpec<String> additionalProperties = parser.accepts("additional-properties", "Additional properties need to be imported")
+            .withOptionalArg().ofType(String.class);
+
+            // don't require updateInfo, default as true
+            OptionSpec<String> updateInfoArg = parser.accepts("update-info", "Update information for existing entities in the database")
+            .withOptionalArg().ofType(String.class);
             
             OptionSet options = null;
             try {
@@ -93,12 +113,22 @@ public class ImportGenericAssayEntity extends ConsoleRunnable {
                 progName, description, parser,
                 "'data' argument required");
             }
+
+            // if no entity type then throw UsageException
+            if (!options.has(entityType)) {
+                throw new UsageException(
+                progName, description, parser,
+                "'entityType' argument required");
+            }
             
-            // Check options
-            boolean updateInfo = options.has("update-info");
+            // Check options, set default as false
+            boolean updateInfo = false;
+            if (options.has("update-info") && (options.valueOf(updateInfoArg).equalsIgnoreCase("true") || options.valueOf(updateInfoArg).equals("1"))) {
+                updateInfo = true;
+            }
             
-            ProgressMonitor.setCurrentMessage("Adding new treatments to the database\n");
-            startImport(options, data, updateInfo);
+            ProgressMonitor.setCurrentMessage("Adding new generic assay to the database\n");
+            startImport(options, data, entityType, additionalProperties, updateInfo);
             
         } catch (RuntimeException e) {
             throw e;
@@ -112,35 +142,40 @@ public class ImportGenericAssayEntity extends ConsoleRunnable {
     *
     * @param updateInfo
     */
-    public static void startImport(OptionSet options, OptionSpec<String> data, boolean updateInfo) throws Exception {
-        if (options.hasArgument(data)) {
-            File treatmentFile = new File(options.valueOf(data));
-            importData(treatmentFile);
+    public static void startImport(OptionSet options, OptionSpec<String> data, OptionSpec<String> geneticAlterationType, OptionSpec<String> additionalProperties, boolean updateInfo) throws Exception {
+        if (options.hasArgument(data) && options.hasArgument(geneticAlterationType)) {
+            File genericAssayFile = new File(options.valueOf(data));
+            GeneticAlterationType geneticAlterationTypeArg = GeneticAlterationType.valueOf(options.valueOf(geneticAlterationType));
+            String additionalPropertiesArg = options.valueOf(additionalProperties);
+            importData(genericAssayFile, geneticAlterationTypeArg, additionalPropertiesArg, updateInfo);
         }
     }
     
     /**
-    * Imports feature columns from treatment file.
+    * Imports feature columns from generic assay file.
     *
-    * @param treatmentDataFile
-    * @param updateInfo boolean that indicates wether additional fields
-    * ("Description, Name, URL") of existing records should be overwritten
+    * @param dataFile
+    * @param geneticAlterationType
+    * @param additionalProperties
     * @throws Exception
     */
-    public static void importData(File treatmentDataFile) throws Exception {
+    public static void importData(File dataFile, GeneticAlterationType geneticAlterationType, String additionalProperties, boolean updateInfo) throws Exception {
         
-        ProgressMonitor.setCurrentMessage("Reading data from: " + treatmentDataFile.getCanonicalPath());
+        ProgressMonitor.setCurrentMessage("Reading data from: " + dataFile.getCanonicalPath());
         
-        // read gene set data file - note: this file does not contain headers
-        FileReader reader = new FileReader(treatmentDataFile);
+        // read generic assay data file
+        FileReader reader = new FileReader(dataFile);
         BufferedReader buf = new BufferedReader(reader);
         String currentLine = buf.readLine();
         String[] headerNames = currentLine.split("\t");
         
-        int indexStableIdField = getTreatmentStableIdIndex(headerNames);
-        int indexNameField = getTreatmentNameIndex(headerNames);
-        int indexDescField = getTreatmentDescIndex(headerNames);
-        int indexUrlField = getTreatmentUrlIndex(headerNames);
+        // read generic assay data
+        int indexStableIdField = getStableIdIndex(headerNames);
+
+        // entities have been overriden
+        List<String> updatedEntities = new ArrayList<>();
+        List<String> notUpdatedEntities = new ArrayList<>();
+        List<String> newEntities = new ArrayList<>();
         
         currentLine = buf.readLine();
         
@@ -148,66 +183,81 @@ public class ImportGenericAssayEntity extends ConsoleRunnable {
             
             String[] parts = currentLine.split("\t");
             
-            // assumed that fields contain: treat id, name, short name
-            String treatmentStableId = parts[indexStableIdField];
-            Treatment treatment = DaoTreatment.getTreatmentByStableId(treatmentStableId);
+            // get stableId and get the meta by the stableId
+            String genericAssayMetaStableId = parts[indexStableIdField];
+            GenericAssayMeta genericAssayMeta = DaoGenericAssay.getGenericAssayMetaByStableId(genericAssayMetaStableId);
+            GeneticEntity genericAssayEntity = DaoGeneticEntity.getGeneticEntityByStableId(genericAssayMetaStableId);
             
-            // treatments are always updated to based on the current import;
+            // generic assay meta are always updated to based on the current import;
             // also when present in db a new record is created.
                 
             // extract fields; replace optional fields with the Stable ID when not set
             String stableId = parts[indexStableIdField];
-            String name = indexNameField == -1?stableId:parts[indexNameField];
-            String desc = indexNameField == -1?stableId:parts[indexDescField];
-            String url = indexNameField == -1?stableId:parts[indexUrlField];
-
-            if (treatment == null) {
-            
-                // create a new treatment and add to the database
-                Treatment newTreatment = new Treatment(stableId, name, desc, url);
-                ProgressMonitor.setCurrentMessage("Adding treatment: " + newTreatment.getStableId());
-                DaoTreatment.addTreatment(newTreatment);
-
+            HashMap<String, String> propertiesMap = new HashMap<>();
+            if (additionalProperties != null) {
+                String[] columnNameList = additionalProperties.trim().split(",");
+                for (String columnName : columnNameList) {
+                    int indexAdditionalField = getColIndexByName(headerNames, columnName);
+                    if (indexAdditionalField != -1) {
+                        propertiesMap.put(columnName, parts[indexAdditionalField]);
+                    }
+                }
             }
-            // update the meta-information fields of the treatment
+
+            // log for the existing entities
+            if (genericAssayMeta != null) {
+                if (updateInfo) {
+                    updatedEntities.add(stableId);
+                    DaoGenericAssay.deleteGenericEntityPropertiesByStableId(stableId);
+                    propertiesMap.forEach((k, v) -> {	
+                        try {	
+                            DaoGenericAssay.setGenericEntityProperty(genericAssayEntity.getId(), k, v);	
+                        } catch (DaoException e) {	
+                            e.printStackTrace();	
+                        }	
+                    });
+                } else {
+                    notUpdatedEntities.add(stableId);
+                }
+            }
+            // create a new generic assay meta and add to the database
             else {
-
-                ProgressMonitor.setCurrentMessage("Updating treatment: " + treatment.getStableId());
-                treatment.setName(name);
-                treatment.setDescription(desc);
-                treatment.setRefLink(url);
-                DaoTreatment.updateTreatment(treatment);
-
+                newEntities.add(stableId);
+                GeneticEntity newGeneticEntity = new GeneticEntity(geneticAlterationType.name(), stableId);
+                GeneticEntity createdGeneticEntity = DaoGeneticEntity.addNewGeneticEntity(newGeneticEntity);
+                propertiesMap.forEach((k, v) -> {
+                    try {
+                        DaoGenericAssay.setGenericEntityProperty(createdGeneticEntity.getId(), k, v);
+                    } catch (DaoException e) {
+                        e.printStackTrace();
+                    }
+                });
             }
 
             currentLine = buf.readLine();
         }
         
+        // show import result message
+        if (updatedEntities.size() > 0) {
+            ProgressMonitor.setCurrentMessage("--> Entities updated: " + updatedEntities.size() + " generic entities existing in the database that were overridden during import.");
+        }
+        if (notUpdatedEntities.size() > 0) {
+            ProgressMonitor.setCurrentMessage("--> Entities not updated: " + notUpdatedEntities.size() + " generic entities existing in the database that were not overridden during import.");
+        }
+        if (newEntities.size() > 0) {
+            ProgressMonitor.setCurrentMessage("--> New Entities: " + newEntities.size() + " generic entities have been imported into database during import.");
+        }
+        
         reader.close();
         
-        ProgressMonitor.setCurrentMessage("Finished loading treatments.\n");
+        ProgressMonitor.setCurrentMessage("Finished loading generic assay.\n");
         
         return;
     }
     
-    // returns index for entity_stable_id column
-    private static int getTreatmentStableIdIndex(String[] headers) {
-        return getColIndexByName(headers, "entity_stable_id");
-    }
-    
-    // returns index for treatment name column
-    private static  int getTreatmentNameIndex(String[] headers) {
-        return getColIndexByName(headers, ImportUtils.metaFieldTag+"name");
-    }
-    
-    // returns index for treatment description column
-    private static  int getTreatmentDescIndex(String[] headers) {
-        return getColIndexByName(headers, ImportUtils.metaFieldTag+"description");
-    }
-    
-    // returns index for treatment linkout url column
-    private static  int getTreatmentUrlIndex(String[] headers) {
-        return getColIndexByName(headers, ImportUtils.metaFieldTag+"url");
+    // returns index for ENTITY_STABLE_ID column
+    private static int getStableIdIndex(String[] headers) {
+        return getColIndexByName(headers, "ENTITY_STABLE_ID");
     }
     
     // helper function for finding the index of a column by name

@@ -20,6 +20,7 @@ We also maintain an active [list of RFCs (Requests for Comments)](RFC-List.md) w
 
 ### 2.1.1 Deploy with Docker (Recommended)
 * [Deploy with Docker](docker/README.md)
+* [Import data with Docker](docker/import_data.md)
 * [Example Commands](docker/example_commands.md)
 * [Authenticating and Authorizing Users using Keycloak in Docker](docker/using-keycloak.md)
 
@@ -43,20 +44,19 @@ We also maintain an active [list of RFCs (Requests for Comments)](RFC-List.md) w
 * [More portal.properties Settings](portal.properties-Reference.md)
 * [Configuring Caching Behavior](Caching.md)
 
+### 2.4 Integration with Other Webservices
+* [OncoKB Data Access](OncoKB-Data-Access.md)
+
 ## 3. cBioPortal Maintenance
 * [Updating your cBioPortal Database Scheme](Updating-your-cBioPortal-installation.md)
 * [Update genes and gene aliases](Updating-gene-and-gene_alias-tables.md)
 
 ## 4. Development      
 * [cBioPortal Entity-relationship Diagram](cBioPortal-ER-Diagram.md)
-* [Using the Data Manager to Get Data and Set Session Parameters](Data-Manager.md)
-* [Accessing Services via the Web-API](cBioPortal-Web-API.md)
-   * [API and API Client](The-API-and-API-Client-[Beta].md)
-* [Providing cBioPortal Parameters](providing-cBioPortal-parameters.md)
-* [Manual test cases](manual-test-cases.md)
 * [Build cBioPortal with a different frontend version](Build-Different-Frontend.md)
-* [Release-Procedure](Release-Procedure.md)
-* [Deployment-Procedure](Deployment-Procedure.md)
+* [Manual test cases](manual-test-cases.md)
+* [Release Procedure](Release-Procedure.md)
+* [Deployment Procedure](Deployment-Procedure.md)
 
 ## 5. Data Loading
 ### 5.1 Data Loading
@@ -71,6 +71,10 @@ We also maintain an active [list of RFCs (Requests for Comments)](RFC-List.md) w
    * [Importing Gene Sets for Gene Set Scoring Data](Import-Gene-Sets.md)
    * [Importing Gene Panels](Import-Gene-Panels.md)
    * [Study View Customization with Priority Data](Study-View.md)
+   * [Importing of OncoKB annotations as custom driver annotations](Import-OncoKB-annotations-as-Custom-Driver-Annotations.md)
 
 ### 5.2 Datasets
 * [Downloads](Downloads.md)
+
+## 6. Web API and Clients
+ * [API and API Clients](API-and-API-Clients.md)

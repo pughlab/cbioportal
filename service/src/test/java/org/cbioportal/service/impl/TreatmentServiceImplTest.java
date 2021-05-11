@@ -1,157 +1,329 @@
-/*
- * Copyright (c) 2019 The Hyve B.V.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
- * FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
- * is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
- * obligations to provide maintenance, support, updates, enhancements or
- * modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
- * liable to any party for direct, indirect, special, incidental or
- * consequential damages, including lost profits, arising out of the use of this
- * software and its documentation, even if Memorial Sloan-Kettering Cancer
- * Center has been advised of the possibility of such damage.
- */
-
-/*
- * This file is part of cBioPortal.
- *
- * cBioPortal is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 package org.cbioportal.service.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import org.cbioportal.model.Treatment;
-import org.cbioportal.model.meta.BaseMeta;
+import org.cbioportal.model.*;
 import org.cbioportal.persistence.TreatmentRepository;
-import org.cbioportal.service.MolecularProfileService;
-import org.cbioportal.service.SampleService;
-import org.cbioportal.service.exception.TreatmentNotFoundException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
 
 @RunWith(MockitoJUnitRunner.class)
-public class TreatmentServiceImplTest extends BaseServiceImplTest {
-
-    public static final String TREATMENT_ID_1 = "treatment_id_1";
-    public static final String STUDY_ID_1 = "study_id_1";
-    private static final int INTERNAL_ID_1 = 1;
-    public static final String TREATMENT_ID_2 = "treatment_id_2";
-    public static final String STUDY_ID_2 = "study_id_2";
-    private static final int INTERNAL_ID_2 = 2;
-
-    private static final List<String> idList = Arrays.asList(TREATMENT_ID_1, TREATMENT_ID_2);
-    private static final  List<Treatment> mockTreatmentList = createTreatmentList();
+public class TreatmentServiceImplTest {
+    
+    private static final String STUDY_ID = "cancer_study";
 
     @InjectMocks
     private TreatmentServiceImpl treatmentService;
 
     @Mock
     private TreatmentRepository treatmentRepository;
-    @Mock
-    private SampleService sampleService;
-    @Mock
-    private MolecularProfileService geneticProfileService;
 
     @Test
-    public void getAllTreatments() {
+    public void getAllSampleTreatmentsSingleRow() {
+        mockTreatmentsByPatient(
+            makeTreatment("madeupanib", "P0", 0, 10)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5)
+        );
+        mockAllTreatments("madeupanib");
 
-        List<Treatment> treatmentList = createTreatmentList();
-        Mockito.when(treatmentRepository.getAllTreatments(PROJECTION, PAGE_SIZE, PAGE_NUMBER))
-            .thenReturn(treatmentList);
-
-        List<Treatment> result = treatmentService.getAllTreatments(PROJECTION, PAGE_SIZE, PAGE_NUMBER);
-
-        Assert.assertEquals(treatmentList, result);
+        PatientTreatmentRow rowA = makePatientRow("madeupanib", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        List<PatientTreatmentRow> expected = Collections.singletonList(rowA);
+        List<PatientTreatmentRow> actual = treatmentService.getAllPatientTreatmentRows(null, null);
+        
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
     }
 
     @Test
-    public void getMetaTreatments() {
+    public void getAllSampleTreatmentsOneSampleTwoTreatmentsOnePatient() {
+        mockTreatmentsByPatient(
+            makeTreatment("madeupanib", "P0", 0, 10),
+            makeTreatment("fakedrugazol", "P0", 0, 10)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5)
+        );
+        mockAllTreatments("madeupanib", "fakedrugazol");
 
-        BaseMeta expectedBaseMeta = new BaseMeta();
-        Mockito.when(treatmentRepository.getMetaTreatments()).thenReturn(expectedBaseMeta);
-        BaseMeta result = treatmentService.getMetaTreatments();
 
-        Assert.assertEquals(expectedBaseMeta, result);
+        PatientTreatmentRow rowA = makePatientRow("fakedrugazol", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        PatientTreatmentRow rowB = makePatientRow("madeupanib", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        List<PatientTreatmentRow> expected = Arrays.asList(rowA, rowB);
+        List<PatientTreatmentRow> actual = treatmentService.getAllPatientTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
     }
 
     @Test
-    public void getTreatment() throws TreatmentNotFoundException {
+    public void getAllSampleTreatmentsTwoSamplesOnePatientOneTreatment() {
+        mockTreatmentsByPatient(
+            makeTreatment("fakedrugazol", "P0", 0, 10)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P0", 10)
+        );
+        mockAllTreatments("fakedrugazol");
 
-        Treatment treatment = mockTreatmentList.get(0);
-        Mockito.when(treatmentRepository.getTreatmentByStableId(TREATMENT_ID_1))
-            .thenReturn(treatment);
+        // even though there are two samples, you expect a count of 1,
+        // because this is from the patient level, and both samples are for the same patient
+        PatientTreatmentRow rowA = makePatientRow("fakedrugazol", 1, Arrays.asList("S0", "S1"), Arrays.asList("P0", "P0"));
+        List<PatientTreatmentRow> expected = Collections.singletonList(rowA);
+        List<PatientTreatmentRow> actual = treatmentService.getAllPatientTreatmentRows(null, null);
 
-        Treatment result = treatmentService.getTreatment(TREATMENT_ID_1);
-        Assert.assertEquals(treatment, result);
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentsTwoSamplesTwoPatientsTwoTreatments() {
+        mockTreatmentsByPatient(
+            makeTreatment("fakedrugazol", "P0", 0, 10),
+            makeTreatment("fakedrugazol", "P1", 0, 10)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P1", 10)
+        );
+        mockAllTreatments("fakedrugazol");
+
+        // now there are two patients, so you expect a count of two
+        PatientTreatmentRow rowA = makePatientRow("fakedrugazol", 2, Arrays.asList("S0", "S1"), Arrays.asList("P0", "P1"));
+        List<PatientTreatmentRow> expected = Collections.singletonList(rowA);
+        List<PatientTreatmentRow> actual = treatmentService.getAllPatientTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentsTwoSamplesTwoPatientsTwoDifferentTreatments() {
+        mockTreatmentsByPatient(
+            makeTreatment("fakedrugazol", "P0", 0, 10),
+            makeTreatment("madeupanib", "P1", 0, 10)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P1", 10)
+        );
+        mockAllTreatments("fakedrugazol", "madeupanib");
+
+        PatientTreatmentRow rowA = makePatientRow("fakedrugazol", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        PatientTreatmentRow rowB = makePatientRow("madeupanib", 1, Collections.singletonList("S1"), Collections.singletonList("P1"));
+        List<PatientTreatmentRow> expected = Arrays.asList(rowA, rowB);
+        List<PatientTreatmentRow> actual = treatmentService.getAllPatientTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentRowsOneSampleBef0reOneTreatment() {
+        mockTreatmentsByPatient(
+            makeTreatment("fabricatin", "P0", 10, 20)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5)
+        );
+
+        SampleTreatmentRow rowA = makeSampleRow(TemporalRelation.Pre, "fabricatin", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        List<SampleTreatmentRow> expected = Collections.singletonList(rowA);
+        List<SampleTreatmentRow> actual = treatmentService.getAllSampleTreatmentRows(null, null);
+        
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentRowsOneSampleAfterOneTreatment() {
+        mockTreatmentsByPatient(
+            makeTreatment("fabricatin", "P0", 10, 20)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 25)
+        );
+
+        SampleTreatmentRow rowA = makeSampleRow(TemporalRelation.Post, "fabricatin", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        List<SampleTreatmentRow> expected = Collections.singletonList(rowA);
+        List<SampleTreatmentRow> actual = treatmentService.getAllSampleTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentRowsOneSampleBeforeOneSampleAfterOneTreatment() {
+        mockTreatmentsByPatient(
+            makeTreatment("fabricatin", "P0", 10, 20)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P0", 25)
+        );
+
+        SampleTreatmentRow rowA = makeSampleRow(TemporalRelation.Post, "fabricatin", 1, Collections.singletonList("S1"), Collections.singletonList("P0"));
+        SampleTreatmentRow rowB = makeSampleRow(TemporalRelation.Pre, "fabricatin", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        List<SampleTreatmentRow> expected = Arrays.asList(rowA, rowB);
+        List<SampleTreatmentRow> actual = treatmentService.getAllSampleTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentRowsThreeSamplesTwoTreatmentsSameDrug() {
+        mockTreatmentsByPatient(
+            makeTreatment("fabricatin", "P0", 10, 20),
+            makeTreatment("fabricatin", "P0", 30, 40)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P0", 25),
+            makeSample("S2", "P0", 45)
+        );
+
+        SampleTreatmentRow rowA = makeSampleRow(TemporalRelation.Post, "fabricatin", 2, Arrays.asList("S1", "S2"), Arrays.asList("P0", "P0"));
+        SampleTreatmentRow rowB = makeSampleRow(TemporalRelation.Pre, "fabricatin", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        List<SampleTreatmentRow> expected = Arrays.asList(rowA, rowB);
+        List<SampleTreatmentRow> actual = treatmentService.getAllSampleTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentRowsThreeSamplesTwoTreatmentsDifferentDrug() {
+        mockTreatmentsByPatient(
+            makeTreatment("fabricatin", "P0", 10, 20),
+            makeTreatment("fauxan", "P0", 30, 40)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P0", 25),
+            makeSample("S2", "P0", 45)
+        );
+
+        // Keep in mind, adding a second drug that has samples that appear before and after it
+        // adds two rows to the result: pre and post
+        SampleTreatmentRow rowA = makeSampleRow(TemporalRelation.Post, "fabricatin", 2, Arrays.asList("S1", "S2"), Arrays.asList("P0", "P0"));
+        SampleTreatmentRow rowB = makeSampleRow(TemporalRelation.Pre, "fabricatin", 1, Collections.singletonList("S0"), Collections.singletonList("P0"));
+        SampleTreatmentRow rowC = makeSampleRow(TemporalRelation.Pre, "fauxan", 2, Arrays.asList("S0", "S1"), Arrays.asList("P0", "P0"));
+        SampleTreatmentRow rowD = makeSampleRow(TemporalRelation.Post, "fauxan", 1, Collections.singletonList("S2"), Collections.singletonList("P0"));
+        List<SampleTreatmentRow> expected = Arrays.asList(rowA, rowB, rowC, rowD);
+        List<SampleTreatmentRow> actual = treatmentService.getAllSampleTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    @Test
+    public void getAllSampleTreatmentRowsTwoPatients() {
+        mockTreatmentsByPatient(
+            makeTreatment("fabricatin", "P0", 10, 20),
+            makeTreatment("fabricatin", "P1", 10, 20),
+            makeTreatment("fauxan", "P0", 30, 40),
+            makeTreatment("fauxan", "P1", 30, 40)
+        );
+        mockSamplesByPatient(
+            makeSample("S0", "P0", 5),
+            makeSample("S1", "P0", 25),
+            makeSample("S2", "P0", 45),
+            makeSample("S3", "P1", 5),
+            makeSample("S4", "P1", 25),
+            makeSample("S5", "P1", 45)
+        );
+
+        // Keep in mind, adding a second drug that has samples that appear before and after it
+        // adds two rows to the result: pre and post
+        SampleTreatmentRow rowA = makeSampleRow(TemporalRelation.Post, "fabricatin", 4, Arrays.asList("S1", "S2", "S4", "S5"), Arrays.asList("P0", "P0", "P1", "P1"));
+        SampleTreatmentRow rowB = makeSampleRow(TemporalRelation.Pre, "fabricatin", 2, Arrays.asList("S0", "S3"), Arrays.asList("P0", "P1"));
+        SampleTreatmentRow rowC = makeSampleRow(TemporalRelation.Pre, "fauxan", 4, Arrays.asList("S0", "S1", "S3", "S4"), Arrays.asList("P0", "P0", "P1", "P1"));
+        SampleTreatmentRow rowD = makeSampleRow(TemporalRelation.Post, "fauxan", 2, Arrays.asList("S2", "S5"), Arrays.asList("P0", "P1"));
+        List<SampleTreatmentRow> expected = Arrays.asList(rowA, rowB, rowC, rowD);
+        List<SampleTreatmentRow> actual = treatmentService.getAllSampleTreatmentRows(null, null);
+
+        Assert.assertEquals(new HashSet<>(expected), new HashSet<>(actual));
+    }
+
+    private void mockTreatmentsByPatient(Treatment... treatments) {
+        Map<String, List<Treatment>> treatmentsByPatient = Arrays.stream(treatments)
+            .collect(Collectors.groupingBy(Treatment::getPatientId));
+        Mockito.when(treatmentRepository.getTreatmentsByPatientId(Mockito.any(), Mockito.any()))
+            .thenReturn(treatmentsByPatient);
     }
     
-    @Test(expected = TreatmentNotFoundException.class)
-    public void getTreatmentByStableIdNotFound() throws TreatmentNotFoundException {
-
-        Treatment treatment = mockTreatmentList.get(0);
-        Mockito.when(treatmentRepository.getTreatmentByStableId(TREATMENT_ID_1))
-            .thenReturn(treatment);
-        //expect TreatmentNotFoundException here:
-        treatmentService.getTreatment("wrongId");
+    private void mockSamplesByPatient(ClinicalEventSample... samples) {
+        Map<String, List<ClinicalEventSample>> samplesByPatient = Arrays.stream(samples)
+            .collect(Collectors.groupingBy(ClinicalEventSample::getPatientId));
+        Mockito.when(treatmentRepository.getSamplesByPatientId(Mockito.any(), Mockito.any()))
+            .thenReturn(samplesByPatient);
+        Mockito.when(treatmentRepository.getShallowSamplesByPatientId(Mockito.any(), Mockito.any()))
+            .thenReturn(samplesByPatient);
+    }
+    
+    private void mockAllTreatments(String... treatments) {
+        Set<String> allTreatments = new HashSet<>(Arrays.asList(treatments));
+        Mockito.when(treatmentRepository.getAllUniqueTreatments(Mockito.any(), Mockito.any()))
+            .thenReturn(allTreatments);
     }
 
-    @Test
-    public void fetchTreatments() {
-        Mockito.when(treatmentRepository.fetchTreatments(Mockito.anyList()))
-            .thenReturn(mockTreatmentList);
-        Assert.assertEquals(treatmentService.fetchTreatments(idList), mockTreatmentList );
+    private Treatment makeTreatment(String treatment, String patientId, Integer start, Integer stop) {
+        Treatment t = new Treatment();
+        t.setTreatment(treatment);
+        t.setStudyId(STUDY_ID);
+        t.setPatientId(patientId);
+        t.setStart(start);
+        t.setStop(stop);
+        return t;
     }
-
-    @Test
-    public void getMetaTreatmentsInStudies() {
-        BaseMeta baseMetaStudy = new BaseMeta();
-        baseMetaStudy.setTotalCount(1);
-        Mockito.when(treatmentRepository.getMetaTreatmentsInStudies(Mockito.anyList()))
-            .thenReturn(baseMetaStudy);
-        Assert.assertEquals(treatmentService.getMetaTreatmentsInStudies(idList).getTotalCount(), (Integer) 1 );
+    
+    private ClinicalEventSample makeSample(String sampleId, String patientId, Integer timeTaken) {
+        ClinicalEventSample s = new ClinicalEventSample();
+        s.setSampleId(sampleId);
+        s.setPatientId(patientId);
+        s.setStudyId(STUDY_ID);
+        s.setTimeTaken(timeTaken);
+        return s;
     }
-
-    @Test
-    public void getTreatments() {
-        Mockito.when(treatmentRepository.getTreatments(Mockito.anyList(), Mockito.anyString()))
-            .thenReturn(mockTreatmentList);
-        Assert.assertEquals(treatmentService.getTreatments(idList, "SUMMARY"), mockTreatmentList );
+    
+    private SampleTreatmentRow makeSampleRow(
+        TemporalRelation time,
+        String treatment,
+        int count,
+        List<String> samples,
+        List<String> patients
+    ) {
+        List<ClinicalEventSample> clinicalSamples = samples.stream()
+            .map(s -> {
+                ClinicalEventSample sample = new ClinicalEventSample();
+                sample.setSampleId(s);
+                sample.setStudyId(STUDY_ID);
+                return sample;
+            })
+            .collect(Collectors.toList());
+        for (int i = 0; i < clinicalSamples.size(); i++) {
+            clinicalSamples.get(i).setPatientId(patients.get(i));
+        }
+        return new SampleTreatmentRow(time, treatment, count, new HashSet<>(clinicalSamples));
     }
-
-    private static List<Treatment> createTreatmentList() {
-
-        List<Treatment> treatmentList = new ArrayList<>();
-
-        Treatment treatment1 = new Treatment();
-        treatment1.setInternalId(INTERNAL_ID_1);
-        treatment1.setStableId(TREATMENT_ID_1);
-        treatmentList.add(treatment1);
-
-        Treatment treatment2 = new Treatment();
-        treatment2.setInternalId(INTERNAL_ID_2);
-        treatment2.setStableId(TREATMENT_ID_2);
-        treatmentList.add(treatment2);
-        return treatmentList;
+    
+    private PatientTreatmentRow makePatientRow(
+        String treatment,
+        int count,
+        List<String> samples,
+        List<String> patients
+    ) {
+        List<ClinicalEventSample> clinicalSamples = samples.stream()
+            .map(s -> {
+                ClinicalEventSample sample = new ClinicalEventSample();
+                sample.setSampleId(s);
+                sample.setStudyId(STUDY_ID);
+                return sample;
+            })
+            .collect(Collectors.toList());
+        for (int i = 0; i < clinicalSamples.size(); i++) {
+            clinicalSamples.get(i).setPatientId(patients.get(i));
+        }
+        return new PatientTreatmentRow(treatment, count, new HashSet<>(clinicalSamples));
     }
-
 }

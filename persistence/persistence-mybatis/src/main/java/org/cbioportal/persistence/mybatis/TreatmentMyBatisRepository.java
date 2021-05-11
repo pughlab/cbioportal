@@ -1,92 +1,59 @@
-/*
- * Copyright (c) 2019 The Hyve B.V.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
- * FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
- * is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
- * obligations to provide maintenance, support, updates, enhancements or
- * modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
- * liable to any party for direct, indirect, special, incidental or
- * consequential damages, including lost profits, arising out of the use of this
- * software and its documentation, even if Memorial Sloan-Kettering Cancer
- * Center has been advised of the possibility of such damage.
- */
-
-/*
- * This file is part of cBioPortal.
- *
- * cBioPortal is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 package org.cbioportal.persistence.mybatis;
 
-import java.util.List;
+import static java.util.stream.Collectors.groupingBy;
 
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.cbioportal.model.ClinicalEventSample;
 import org.cbioportal.model.Treatment;
-import org.cbioportal.model.meta.BaseMeta;
 import org.cbioportal.persistence.TreatmentRepository;
-import org.cbioportal.persistence.mybatis.util.OffsetCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.retry.backoff.ThreadWaitSleeper;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class TreatmentMyBatisRepository implements TreatmentRepository {
-
     @Autowired
-    TreatmentMapper treatmentMapper;
-    @Autowired
-    private OffsetCalculator offsetCalculator;
+    private TreatmentMapper treatmentMapper;
+    
+    @Override
+    public Map<String, List<Treatment>> getTreatmentsByPatientId(List<String> sampleIds, List<String> studyIds) {
+        return treatmentMapper.getAllTreatments(sampleIds, studyIds)
+            .stream()
+            .collect(groupingBy(Treatment::getPatientId));
+    }
 
-	@Override
-	public List<Treatment> getAllTreatments(String projection, Integer pageSize, Integer pageNumber) {
-		return this.getTreatmentsInStudies(null, projection, pageSize, offsetCalculator.calculate(pageSize, pageNumber), "stableId", "ASC");
-	}
+    @Override
+    public Map<String, List<ClinicalEventSample>> getSamplesByPatientId(List<String> sampleIds, List<String> studyIds) {
+        return treatmentMapper.getAllSamples(sampleIds, studyIds)
+            .stream()
+            .sorted(Comparator.comparing(ClinicalEventSample::getTimeTaken)) // put earliest events first
+            .distinct() // uniqueness determined by sample id, patient id, and study id
+            // combined, the sort and distinct produce the earliest clinical event row for each unique sample
+            .collect(groupingBy(ClinicalEventSample::getPatientId));
+    }
 
-	@Override
-	public BaseMeta getMetaTreatments() {
-		return treatmentMapper.getMetaTreatments(null);
-	}
+    public Map<String, List<ClinicalEventSample>> getShallowSamplesByPatientId(List<String> sampleIds, List<String> studyIds) {
+        return treatmentMapper.getAllShallowSamples(sampleIds, studyIds)
+            .stream()
+            .distinct()
+            .collect(groupingBy(ClinicalEventSample::getPatientId));
+    }
 
-	@Override
-	public BaseMeta getMetaTreatments(List<String> treatmentIds) {
-		return treatmentMapper.getMetaTreatments(treatmentIds);
-	}
+    @Override
+    public Set<String> getAllUniqueTreatments(List<String> sampleIds, List<String> studyIds) {
+        return treatmentMapper.getAllUniqueTreatments(sampleIds, studyIds);
+    }
 
-	@Override
-	public BaseMeta getMetaTreatmentsInStudies(List<String> studyIds) {
-		return treatmentMapper.getMetaTreatmentsInStudies(studyIds);
-	}
-	
-	@Override
-	public Treatment getTreatmentByStableId(String treatmentId) {
-		return treatmentMapper.getTreatmentByStableId(treatmentId);
-	}
-	
-	@Override
-	public List<Treatment> fetchTreatments(List<String> treatmentIds) {
-		return treatmentMapper.fetchTreatments(treatmentIds);
-	}
-	
-	@Override
-	public List<Treatment> getTreatmentsInStudies(List<String> studyIds, String projection, Integer limit, Integer offset, String sortBy, String direction) {
-		return treatmentMapper.getTreatmentsInStudies(studyIds, projection, limit, offset, sortBy, direction);
-	}
+    @Override
+    public Integer getTreatmentCount(List<String> studies) {
+        return treatmentMapper.getTreatmentCount(null, studies);
+    }
 
-	@Override
-	public List<Treatment> getTreatments(List<String> treatmentIds, String projection) {
-		return null;
-	}
-
+    @Override
+    public Integer getSampleCount(List<String> studies) {
+        return treatmentMapper.getSampleCount(null, studies);
+    }
 }

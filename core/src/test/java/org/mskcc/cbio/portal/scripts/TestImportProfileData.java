@@ -57,14 +57,15 @@ import org.mskcc.cbio.portal.model.ClinicalData;
 import org.mskcc.cbio.portal.model.CnaEvent;
 import org.mskcc.cbio.portal.model.ExtendedMutation;
 import org.mskcc.cbio.portal.model.GeneticProfile;
+import org.mskcc.cbio.portal.model.GeneticAlterationType;
 import org.mskcc.cbio.portal.model.Patient;
 import org.mskcc.cbio.portal.model.Sample;
 
 import org.mskcc.cbio.portal.util.ConsoleUtil;
 import org.mskcc.cbio.portal.util.ProgressMonitor;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.test.context.transaction.TransactionConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -72,7 +73,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations = { "classpath:/applicationContext-dao.xml" })
-@TransactionConfiguration(transactionManager = "transactionManager", defaultRollback = true)
+@Rollback
 @Transactional
 public class TestImportProfileData {
 
@@ -219,6 +220,41 @@ public class TestImportProfileData {
     }
 
     @Test
+    public void testImportSplitFusionsFile() throws Exception {
+        /*
+         * Check case where study has multiple fusions file.
+         * i.e somatic and germline fusions are in seperate files
+         * Check that an SV genetic profile is created.
+         * Check that the second fusion file does not insert duplicate genetic profile.
+         */
+        String svStudyStableId = "study_tcga_pub_fusion";
+        GeneticProfile svGeneticProfile = DaoGeneticProfile.getGeneticProfileByStableId(svStudyStableId);
+        assertNull(svGeneticProfile);
+
+        String[] args = {
+                "--data","src/test/resources/splitFusionsData/data_fusions.txt",
+                "--meta","src/test/resources/splitFusionsData/meta_fusions.txt",
+                "--loadMode", "bulkLoad"
+        };
+        ImportProfileData runner = new ImportProfileData(args);
+        runner.run();
+        svGeneticProfile = DaoGeneticProfile.getGeneticProfileByStableId(svStudyStableId);
+        assertNotNull(svGeneticProfile);
+       
+        // load a second fusions file - new genetic profile not created
+        String[] secondArgs = {
+                "--data","src/test/resources/splitFusionsData/data_fusions_gml.txt",
+                "--meta","src/test/resources/splitFusionsData/meta_fusions_gml.txt",
+                "--loadMode", "bulkLoad"
+        };
+        ImportProfileData secondRunner = new ImportProfileData(secondArgs);
+        secondRunner.run();
+        svGeneticProfile = DaoGeneticProfile.getGeneticProfileByStableId(svStudyStableId);
+        assertNotNull(svGeneticProfile);
+        assertEquals(GeneticAlterationType.STRUCTURAL_VARIANT, svGeneticProfile.getGeneticAlterationType());
+    }
+
+    @Test
     public void testImportGermlineOnlyFile() throws Exception {
         /* Mutations file split over two files with same stable id */
         String[] args = {
@@ -307,11 +343,19 @@ public class TestImportProfileData {
         CnaEvent cnaEvent = DaoCnaEvent.getCnaEvents(sampleInternalIds, null, geneticProfileId, cnaLevels).get(0);
         assertEquals(-2, cnaEvent.getAlteration().getCode());
         assertEquals("TESTBRCA1", cnaEvent.getGeneSymbol());
+        assertEquals("Putative_Passenger", cnaEvent.getDriverFilter());
+        assertEquals("Test passenger", cnaEvent.getDriverFilterAnnotation());
+        assertEquals("Class 2", cnaEvent.getDriverTiersFilter());
+        assertEquals("Class 2 annotation", cnaEvent.getDriverTiersFilterAnnotation());
         sampleId = DaoSample.getSampleByCancerStudyAndSampleId(studyId, "TCGA-02-0003-01").getInternalId();
         sampleInternalIds = Arrays.asList((int)sampleId);
         cnaEvent = DaoCnaEvent.getCnaEvents(sampleInternalIds, null, geneticProfileId, cnaLevels).get(0);
         assertEquals(2, cnaEvent.getAlteration().getCode());
         assertEquals("TESTBRCA2", cnaEvent.getGeneSymbol());
+        assertEquals("Putative_Driver", cnaEvent.getDriverFilter());
+        assertEquals("Test driver", cnaEvent.getDriverFilterAnnotation());
+        assertEquals("Class 1", cnaEvent.getDriverTiersFilter());
+        assertEquals("Class 1 annotation", cnaEvent.getDriverTiersFilterAnnotation());
     }
 
     private void validateMutationAminoAcid (int geneticProfileId, Integer sampleId, long entrezGeneId, String expectedAminoAcidChange) throws DaoException {

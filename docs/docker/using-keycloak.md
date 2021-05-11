@@ -14,15 +14,15 @@ docker network create kcnet
 
 Run a MySQL database in which Keycloak can store its data. This
 database server will not be addressable from outside the Docker
-network. The database will store its files in a folder named
-`kcdb-files` in the present working directory, unless you specify some
-other (absolute) path before the colon in the `-v` argument.
+network. Replace `<path_to_database>` with the absolute path where
+the folder `kcdb-files` will be placed. This folder is used by the
+database to store its files.
 
 ```shell
 docker run -d --restart=always \
     --name=kcdb \
     --net=kcnet \
-    -v "$PWD/kcdb-files:/var/lib/mysql" \
+    -v "<path_to_database>/kcdb-files:/var/lib/mysql" \
     -e MYSQL_DATABASE=keycloak \
     -e MYSQL_USER=keycloak \
     -e MYSQL_PASSWORD=password \
@@ -56,10 +56,5 @@ documentation](../Authenticating-and-Authorizing-Users-via-keycloak.md#configure
 Remember to specify port 8180 for the Keycloak server, wherever the guide says
 8080.
 
-When starting the cBioPortal web server with the new configuration, instead of
-modifying Tomcat config files, include the `-Dauthenticate=saml` flag in the
-`JAVA_OPTS` argument on the command line:
-
-```
-    -e JAVA_OPTS='-Xms2g -Xmx4g -Dauthenticate=saml' \
-```
+After configuring Keycloak, set up cBioPortal containers [as specified in the documentation](README.md). Make sure to update the `-Dauthenticate` 
+in the [docker-compose file](https://github.com/cBioPortal/cbioportal-docker-compose/blob/5da068f0eb9b4f42db52ab5e91321b26a1826d7a/docker-compose.yml#L20) to `-Dauthenticate=saml`.

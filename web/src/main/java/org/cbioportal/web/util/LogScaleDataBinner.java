@@ -6,21 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class LogScaleDataBinner {
+    @Autowired
     private DataBinHelper dataBinHelper;
 
-    @Autowired
-    public LogScaleDataBinner(DataBinHelper dataBinHelper) {
-        this.dataBinHelper = dataBinHelper;
-    }
-
-    public List<DataBin> calculateDataBins(String attributeId,
-                                           Range<BigDecimal> boxRange,
+    public List<DataBin> calculateDataBins(Range<BigDecimal> boxRange,
                                            List<BigDecimal> values,
                                            BigDecimal lowerOutlier,
                                            BigDecimal upperOutlier) {
@@ -29,14 +23,15 @@ public class LogScaleDataBinner {
 
         if (boxRange.lowerEndpoint().compareTo(new BigDecimal("0")) != 0) {
             double absLogValue = Math.log10(boxRange.lowerEndpoint().abs().doubleValue());
-            start = BigDecimal.valueOf(boxRange.lowerEndpoint().compareTo(new BigDecimal("0")) == -1 ? -Math.ceil(absLogValue) : Math.floor(absLogValue));
+            start = BigDecimal.valueOf(boxRange.lowerEndpoint().compareTo(new BigDecimal("0")) == -1 ? 
+                -Math.ceil(absLogValue) : Math.floor(absLogValue));
         }
 
         if (lowerOutlier != null) {
             intervals.add(lowerOutlier);
         }
 
-        for (BigDecimal exponent = start; ; exponent=exponent.add(new BigDecimal("0.5"))) {
+        for (BigDecimal exponent = start; ; exponent = exponent.add(new BigDecimal("0.5"))) {
             BigDecimal value = calcIntervalValue(exponent);
 
             if ((lowerOutlier == null || value.compareTo(lowerOutlier) == 1) &&
@@ -45,22 +40,40 @@ public class LogScaleDataBinner {
             }
 
             if (value.compareTo(boxRange.upperEndpoint()) == 1) {
-                value = calcIntervalValue(exponent.add(new BigDecimal("0.5")));
+                exponent = exponent.add(new BigDecimal("0.5"));
 
-                if (upperOutlier == null || value.compareTo(upperOutlier) != 1) {
-                    intervals.add(value);
-                } else {
+                if (!addOutlierInterval(intervals, exponent, upperOutlier)) {
                     intervals.add(upperOutlier);
+                }
+                
+                // we don't want to end with non-integer exponent, 
+                // add one more interval value if possible
+                if (exponent.stripTrailingZeros().scale() > 0) {
+                    exponent = exponent.add(new BigDecimal("0.5"));
+                    addOutlierInterval(intervals, exponent, upperOutlier);
                 }
 
                 break;
             }
         }
 
-        return dataBinHelper.initDataBins(attributeId, values, intervals);
+        return dataBinHelper.initDataBins(values, intervals);
     }
 
     public BigDecimal calcIntervalValue(BigDecimal exponent) {
         return BigDecimal.valueOf(exponent.signum() * Math.floor(Math.pow(10, exponent.abs().doubleValue())));
+    }
+    
+    private boolean addOutlierInterval(List<BigDecimal> intervals, 
+                                       BigDecimal exponent, 
+                                       BigDecimal upperOutlier)
+    {
+        BigDecimal value = calcIntervalValue(exponent);
+
+        if (upperOutlier == null || value.compareTo(upperOutlier) != 1) {
+            return intervals.add(value);
+        }
+        
+        return false;
     }
 }

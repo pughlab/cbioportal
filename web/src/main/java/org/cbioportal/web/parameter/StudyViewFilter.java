@@ -9,7 +9,10 @@ import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.cbioportal.web.parameter.filter.*;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(Include.NON_NULL)
 public class StudyViewFilter implements Serializable {
 
@@ -17,14 +20,15 @@ public class StudyViewFilter implements Serializable {
     private List<SampleIdentifier> sampleIdentifiers;
     @Size(min = 1)
     private List<String> studyIds;
-    private List<ClinicalDataEqualityFilter> clinicalDataEqualityFilters;
-    private List<ClinicalDataIntervalFilter> clinicalDataIntervalFilters;
-    private List<MutationGeneFilter> mutatedGenes;
-    private List<FusionGeneFilter> fusionGenes;
-	private List<CopyNumberGeneFilter> cnaGenes;
-	private Boolean withMutationData;
-	private Boolean withCNAData;
-	private RectangleBounds mutationCountVsCNASelection;
+    private List<ClinicalDataFilter> clinicalDataFilters;
+    private List<GeneFilter> geneFilters;
+    private AndedSampleTreatmentFilters sampleTreatmentFilters;
+    private AndedPatientTreatmentFilters patientTreatmentFilters;
+	private List<List<String>> genomicProfiles;
+    private List<GenomicDataFilter> genomicDataFilters;
+    private List<GenericAssayDataFilter> genericAssayDataFilters;
+    private List<List<String>> caseLists;
+    private List<ClinicalDataFilter> customDataFilters;
 
     @AssertTrue
     private boolean isEitherSampleIdentifiersOrStudyIdsPresent() {
@@ -33,14 +37,33 @@ public class StudyViewFilter implements Serializable {
 
     @AssertTrue
     private boolean isEitherValueOrRangePresentInClinicalDataIntervalFilters() {
+        return validateDataFilters(clinicalDataFilters);
+    }
+
+    @AssertTrue
+    private boolean isEitherValueOrRangePresentInGenomicDataIntervalFilters() {
+        return validateDataFilters(genomicDataFilters);
+    }
+
+    @AssertTrue
+    private boolean isEitherValueOrRangePresentInGenericAssayDataIntervalFilters() {
+        return validateDataFilters(genericAssayDataFilters);
+    }
+
+    @AssertTrue
+    private boolean isEitherValueOrRangePresentInCustomDataFilters() {
+        return validateDataFilters(customDataFilters);
+    }
+
+    private <T extends DataFilter> boolean validateDataFilters(List<T> dataFilters) {
         long invalidCount = 0;
 
-        if (clinicalDataIntervalFilters != null) {
-            invalidCount = clinicalDataIntervalFilters.stream()
-                .flatMap(f -> f.getValues().stream())
-                .filter(Objects::nonNull)
-                .filter(v -> v.getValue() != null == (v.getStart() != null || v.getEnd() != null))
-                .count();
+        if (dataFilters != null) {
+            invalidCount = dataFilters.stream()
+                    .flatMap(f -> f.getValues().stream())
+                    .filter(Objects::nonNull)
+                    .filter(v -> v.getValue() != null == (v.getStart() != null || v.getEnd() != null))
+                    .count();
         }
 
         return invalidCount == 0;
@@ -62,65 +85,76 @@ public class StudyViewFilter implements Serializable {
         this.studyIds = studyIds;
     }
 
-    public List<ClinicalDataEqualityFilter> getClinicalDataEqualityFilters() {
-        return clinicalDataEqualityFilters;
+    public List<ClinicalDataFilter> getClinicalDataFilters() {
+        return clinicalDataFilters;
     }
 
-    public void setClinicalDataEqualityFilters(List<ClinicalDataEqualityFilter> clinicalDataEqualityFilters) {
-        this.clinicalDataEqualityFilters = clinicalDataEqualityFilters;
+    public void setClinicalDataFilters(List<ClinicalDataFilter> clinicalDataFilters) {
+        this.clinicalDataFilters = clinicalDataFilters;
     }
 
-    public List<ClinicalDataIntervalFilter> getClinicalDataIntervalFilters() {
-        return clinicalDataIntervalFilters;
+    public List<GeneFilter> getGeneFilters() {
+        return geneFilters;
     }
 
-    public void setClinicalDataIntervalFilters(List<ClinicalDataIntervalFilter> clinicalDataIntervalFilters) {
-        this.clinicalDataIntervalFilters = clinicalDataIntervalFilters;
+    public void setGeneFilters(List<GeneFilter> geneFilters) {
+        this.geneFilters = geneFilters;
     }
 
-    public List<MutationGeneFilter> getMutatedGenes() {
-        return mutatedGenes;
+    public List<List<String>> getGenomicProfiles() {
+        return genomicProfiles;
     }
 
-	public void setMutatedGenes(List<MutationGeneFilter> mutatedGenes) { this.mutatedGenes = mutatedGenes; }
-
-    public List<FusionGeneFilter> getFusionGenes() {
-        return fusionGenes;
+    public void setGenomicProfiles(List<List<String>> genomicProfiles) {
+        this.genomicProfiles = genomicProfiles;
     }
 
-    public void setFusionGenes(List<FusionGeneFilter> fusionGenes) {
-        this.fusionGenes = fusionGenes;
+    public List<GenomicDataFilter> getGenomicDataFilters() {
+        return genomicDataFilters;
     }
 
-    public List<CopyNumberGeneFilter> getCnaGenes() {
-        return cnaGenes;
+    public void setGenomicDataFilters(List<GenomicDataFilter> genomicDataFilters) {
+        this.genomicDataFilters = genomicDataFilters;
     }
 
-    public void setCnaGenes(List<CopyNumberGeneFilter> cnaGenes) {
-        this.cnaGenes = cnaGenes;
+    public AndedSampleTreatmentFilters getSampleTreatmentFilters() {
+        return sampleTreatmentFilters;
     }
 
-    public Boolean getWithMutationData() {
-        return withMutationData;
+    public void setSampleTreatmentFilters(AndedSampleTreatmentFilters sampleTreatmentFilters) {
+        this.sampleTreatmentFilters = sampleTreatmentFilters;
     }
 
-    public void setWithMutationData(Boolean withMutationData) {
-        this.withMutationData = withMutationData;
+    public AndedPatientTreatmentFilters getPatientTreatmentFilters() {
+        return patientTreatmentFilters;
     }
 
-    public Boolean getWithCNAData() {
-        return withCNAData;
+    public void setPatientTreatmentFilters(AndedPatientTreatmentFilters patientTreatmentFilters) {
+        this.patientTreatmentFilters = patientTreatmentFilters;
     }
 
-    public void setWithCNAData(Boolean withCNAData) {
-        this.withCNAData = withCNAData;
+    public List<List<String>> getCaseLists() {
+        return caseLists;
     }
 
-    public RectangleBounds getMutationCountVsCNASelection() {
-        return mutationCountVsCNASelection;
+    public void setCaseLists(List<List<String>> caseLists) {
+        this.caseLists = caseLists;
     }
 
-    public void setMutationCountVsCNASelection(RectangleBounds mutationCountVsCNASelection) {
-        this.mutationCountVsCNASelection = mutationCountVsCNASelection;
+	public List<GenericAssayDataFilter> getGenericAssayDataFilters() {
+		return genericAssayDataFilters;
+	}
+
+	public void setGenericAssayDataFilters(List<GenericAssayDataFilter> genericAssayDataFilters) {
+		this.genericAssayDataFilters = genericAssayDataFilters;
+	}
+
+    public List<ClinicalDataFilter> getCustomDataFilters() {
+        return customDataFilters;
     }
+
+    public void setCustomDataFilters(List<ClinicalDataFilter> customDataFilters) {
+        this.customDataFilters = customDataFilters;
+    }
+
 }

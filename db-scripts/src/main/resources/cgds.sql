@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2016 - 2019 Memorial Sloan-Kettering Cancer Center.
+-- Copyright (c) 2016 - 2020 Memorial Sloan-Kettering Cancer Center.
 --
 -- This library is distributed in the hope that it will be useful, but WITHOUT
 -- ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
@@ -68,7 +68,12 @@ DROP TABLE IF EXISTS `interaction`;
 DROP TABLE IF EXISTS `clinical_attribute_meta`;
 DROP TABLE IF EXISTS `clinical_sample`;
 DROP TABLE IF EXISTS `clinical_patient`;
+DROP TABLE IF EXISTS `resource_definition`;
+DROP TABLE IF EXISTS `resource_sample`;
+DROP TABLE IF EXISTS `resource_patient`;
+DROP TABLE IF EXISTS `resource_study`;
 DROP TABLE IF EXISTS `mutation_count_by_keyword`;
+DROP TABLE IF EXISTS `allele_specific_copy_number`;
 DROP TABLE IF EXISTS `mutation`;
 DROP TABLE IF EXISTS `mutation_event`;
 DROP TABLE IF EXISTS `structural_variant`;
@@ -78,6 +83,7 @@ DROP TABLE IF EXISTS `gene_panel`;
 DROP TABLE IF EXISTS `genetic_profile_samples`;
 DROP TABLE IF EXISTS `genetic_alteration`;
 DROP TABLE IF EXISTS `genetic_profile_link`;
+DROP TABLE IF EXISTS `alteration_driver_annotation`;
 DROP TABLE IF EXISTS `genetic_profile`;
 DROP TABLE IF EXISTS `uniprot_id_mapping`;
 DROP TABLE IF EXISTS `gene_alias`;
@@ -97,7 +103,7 @@ DROP TABLE IF EXISTS `type_of_cancer`;
 DROP TABLE IF EXISTS `geneset_hierarchy_leaf`;
 DROP TABLE IF EXISTS `geneset_hierarchy_node`;
 DROP TABLE IF EXISTS `geneset`;
-DROP TABLE IF EXISTS `treatment`;
+DROP TABLE IF EXISTS `generic_entity_properties`;
 DROP TABLE IF EXISTS `genetic_entity`;
 DROP TABLE IF EXISTS `reference_genome`;
 
@@ -143,7 +149,7 @@ CREATE TABLE `cancer_study` (
   PRIMARY KEY (`CANCER_STUDY_ID`),
   UNIQUE (`CANCER_STUDY_IDENTIFIER`),
   FOREIGN KEY (`TYPE_OF_CANCER_ID`) REFERENCES `type_of_cancer` (`TYPE_OF_CANCER_ID`),
-  FOREIGN KEY (`REFERENCE_GENOME_ID`) REFERENCES `reference_genome` (`REFERENCE_GENOME_ID`) ON DELETE RESTRICT 
+  FOREIGN KEY (`REFERENCE_GENOME_ID`) REFERENCES `reference_genome` (`REFERENCE_GENOME_ID`) ON DELETE RESTRICT
 );
 
 -- --------------------------------------------------------
@@ -211,9 +217,11 @@ CREATE TABLE `sample_list_list` (
 );
 
 -- --------------------------------------------------------
+
 CREATE TABLE `genetic_entity` (
   `ID` int(11) NOT NULL AUTO_INCREMENT,
   `ENTITY_TYPE` varchar(45) NOT NULL,
+  `STABLE_ID` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`ID`)
 );
 
@@ -280,15 +288,13 @@ CREATE TABLE `geneset_hierarchy_leaf` (
 );
 
 -- ------------------------------------------------------
-CREATE TABLE `treatment` (
+CREATE TABLE `generic_entity_properties` (
   `ID` INT(11) NOT NULL auto_increment,
-  `STABLE_ID` VARCHAR(45) NOT NULL UNIQUE,
-  `NAME` VARCHAR(45) NOT NULL,
-  `DESCRIPTION` VARCHAR(200) NOT NULL,
-  `LINKOUT_URL` VARCHAR(400) NOT NULL,
-  `GENETIC_ENTITY_ID` INT NOT NULL UNIQUE,
+  `GENETIC_ENTITY_ID` INT NOT NULL,
+  `NAME` varchar(255) NOT NULL,
+  `VALUE` varchar(5000) NOT NULL,
+  UNIQUE (`GENETIC_ENTITY_ID`, `NAME`),
   PRIMARY KEY (`ID`),
-  UNIQUE INDEX `TREATMENT_GENETIC_ENTITY_ID_UNIQUE` (`GENETIC_ENTITY_ID` ASC),
   FOREIGN KEY (`GENETIC_ENTITY_ID`) REFERENCES `genetic_entity` (`ID`) ON DELETE CASCADE
 );
 
@@ -309,6 +315,7 @@ CREATE TABLE `genetic_profile` (
   `STABLE_ID` varchar(255) NOT NULL,
   `CANCER_STUDY_ID` int(11) NOT NULL,
   `GENETIC_ALTERATION_TYPE` varchar(255) NOT NULL,
+  `GENERIC_ASSAY_TYPE` varchar(255) DEFAULT NULL,
   `DATATYPE` varchar(255) NOT NULL,
   `NAME` varchar(255) NOT NULL,
   `DESCRIPTION` mediumtext,
@@ -337,7 +344,7 @@ CREATE TABLE `genetic_alteration` (
   `VALUES` longtext NOT NULL,
   PRIMARY KEY (`GENETIC_PROFILE_ID`,`GENETIC_ENTITY_ID`),
   FOREIGN KEY (`GENETIC_PROFILE_ID`) REFERENCES `genetic_profile` (`GENETIC_PROFILE_ID`) ON DELETE CASCADE,
-  FOREIGN KEY (`GENETIC_ENTITY_ID`) REFERENCES `genetic_entity` (`ID`)
+  FOREIGN KEY (`GENETIC_ENTITY_ID`) REFERENCES `genetic_entity` (`ID`) ON DELETE CASCADE
 );
 
 -- --------------------------------------------------------
@@ -416,16 +423,28 @@ CREATE TABLE `structural_variant` (
   `LENGTH` int(11),
   `COMMENTS` varchar(255),
   `EXTERNAL_ANNOTATION` varchar(80),
-  `DRIVER_FILTER` VARCHAR(20), -- These fields are the same as in `mutation` table and will be useful in a future PR to include custom driver annotation support for fusions.
-  `DRIVER_FILTER_ANNOTATION` VARCHAR(80),
-  `DRIVER_TIERS_FILTER` VARCHAR(50),
-  `DRIVER_TIERS_FILTER_ANNOTATION` VARCHAR(80),
   PRIMARY KEY (`INTERNAL_ID`),
   FOREIGN KEY (`SAMPLE_ID`) REFERENCES `sample` (`INTERNAL_ID`) ON DELETE CASCADE,
   FOREIGN KEY (`SITE1_ENTREZ_GENE_ID`) REFERENCES `gene` (`ENTREZ_GENE_ID`) ON DELETE CASCADE,
   FOREIGN KEY (`SITE2_ENTREZ_GENE_ID`) REFERENCES `gene` (`ENTREZ_GENE_ID`) ON DELETE CASCADE,
   FOREIGN KEY (`GENETIC_PROFILE_ID`) REFERENCES `genetic_profile` (`GENETIC_PROFILE_ID`) ON DELETE CASCADE
 );
+
+-- --------------------------------------------------------
+CREATE TABLE `alteration_driver_annotation` (
+  `ALTERATION_EVENT_ID` int(255) NOT NULL,
+  `GENETIC_PROFILE_ID` int(11) NOT NULL,
+  `SAMPLE_ID` int(11) NOT NULL,
+  `DRIVER_FILTER` VARCHAR(20),
+  `DRIVER_FILTER_ANNOTATION` VARCHAR(80),
+  `DRIVER_TIERS_FILTER` VARCHAR(50),
+  `DRIVER_TIERS_FILTER_ANNOTATION` VARCHAR(80),
+  PRIMARY KEY (`ALTERATION_EVENT_ID`, `GENETIC_PROFILE_ID`, `SAMPLE_ID`),
+  FOREIGN KEY (`GENETIC_PROFILE_ID`) REFERENCES `genetic_profile` (`GENETIC_PROFILE_ID`) ON DELETE CASCADE,
+  FOREIGN KEY (`SAMPLE_ID`) REFERENCES `sample` (`INTERNAL_ID`) ON DELETE CASCADE,
+  INDEX (`DRIVER_FILTER`),
+  INDEX (`DRIVER_TIERS_FILTER`)
+) COMMENT='Alteration driver annotation';
 
 -- --------------------------------------------------------
 CREATE TABLE `mutation_event` (
@@ -460,7 +479,8 @@ CREATE TABLE `mutation_event` (
   KEY (`KEYWORD`),
   PRIMARY KEY (`MUTATION_EVENT_ID`),
   KEY `KEY_MUTATION_EVENT_DETAILS` (`CHR`, `START_POSITION`, `END_POSITION`, `TUMOR_SEQ_ALLELE`(240), `ENTREZ_GENE_ID`, `PROTEIN_CHANGE`, `MUTATION_TYPE`),
-  FOREIGN KEY (`ENTREZ_GENE_ID`) REFERENCES `gene` (`ENTREZ_GENE_ID`)
+  FOREIGN KEY (`ENTREZ_GENE_ID`) REFERENCES `gene` (`ENTREZ_GENE_ID`),
+  INDEX (`MUTATION_TYPE`)
 ) COMMENT='Mutation Data';
 
 -- --------------------------------------------------------
@@ -493,10 +513,7 @@ CREATE TABLE `mutation` (
   `NORMAL_ALT_COUNT` int(11),
   `NORMAL_REF_COUNT` int(11),
   `AMINO_ACID_CHANGE` varchar(255),
-  `DRIVER_FILTER` VARCHAR(20),
-  `DRIVER_FILTER_ANNOTATION` VARCHAR(80),
-  `DRIVER_TIERS_FILTER` VARCHAR(50),
-  `DRIVER_TIERS_FILTER_ANNOTATION` VARCHAR(80),
+  `ANNOTATION_JSON` JSON,
   UNIQUE KEY `UQ_MUTATION_EVENT_ID_GENETIC_PROFILE_ID_SAMPLE_ID` (`MUTATION_EVENT_ID`,`GENETIC_PROFILE_ID`,`SAMPLE_ID`), -- Constraint to block duplicated mutation entries
   KEY (`GENETIC_PROFILE_ID`,`ENTREZ_GENE_ID`),
   KEY (`GENETIC_PROFILE_ID`,`SAMPLE_ID`),
@@ -704,7 +721,8 @@ CREATE TABLE `cna_event` (
   `ALTERATION` tinyint NOT NULL,
   PRIMARY KEY (`CNA_EVENT_ID`),
   UNIQUE (`ENTREZ_GENE_ID`, `ALTERATION`),
-  FOREIGN KEY (`ENTREZ_GENE_ID`) REFERENCES `gene` (`ENTREZ_GENE_ID`)
+  FOREIGN KEY (`ENTREZ_GENE_ID`) REFERENCES `gene` (`ENTREZ_GENE_ID`),
+  INDEX (`ALTERATION`)
 );
 
 -- --------------------------------------------------------
@@ -839,11 +857,69 @@ CREATE TABLE `data_access_tokens` (
     PRIMARY KEY (`TOKEN`),
     FOREIGN KEY (`USERNAME`) REFERENCES `users` (`EMAIL`) ON DELETE CASCADE
 );
-
+-- --------------------------------------------------------
+CREATE TABLE `allele_specific_copy_number` (
+    `MUTATION_EVENT_ID` int(255) NOT NULL,
+    `GENETIC_PROFILE_ID` int(11) NOT NULL,
+    `SAMPLE_ID` int(11) NOT NULL,
+    `ASCN_INTEGER_COPY_NUMBER` int DEFAULT NULL,
+    `ASCN_METHOD` varchar(24) NOT NULL,
+    `CCF_EXPECTED_COPIES_UPPER` float DEFAULT NULL,
+    `CCF_EXPECTED_COPIES` float DEFAULT NULL,
+    `CLONAL` varchar(16) DEFAULT NULL,
+    `MINOR_COPY_NUMBER` int DEFAULT NULL,
+    `EXPECTED_ALT_COPIES` int DEFAULT NULL,
+    `TOTAL_COPY_NUMBER` int DEFAULT NULL,
+    UNIQUE KEY `UQ_ASCN_MUTATION_EVENT_ID_GENETIC_PROFILE_ID_SAMPLE_ID` (`MUTATION_EVENT_ID`,`GENETIC_PROFILE_ID`,`SAMPLE_ID`), -- Constraint to block duplicated mutation entries
+    FOREIGN KEY (`MUTATION_EVENT_ID`) REFERENCES `mutation_event` (`MUTATION_EVENT_ID`),
+    FOREIGN KEY (`GENETIC_PROFILE_ID`) REFERENCES `genetic_profile` (`GENETIC_PROFILE_ID`) ON DELETE CASCADE,
+    FOREIGN KEY (`SAMPLE_ID`) REFERENCES `sample` (`INTERNAL_ID`) ON DELETE CASCADE
+);
 -- --------------------------------------------------------
 CREATE TABLE `info` (
   `DB_SCHEMA_VERSION` varchar(24),
   `GENESET_VERSION` varchar(24)
 );
+
+-- --------------------------------------------------------
+CREATE TABLE `resource_definition` (
+  `RESOURCE_ID` varchar(255) NOT NULL,
+  `DISPLAY_NAME` varchar(255) NOT NULL,
+  `DESCRIPTION` varchar(2048) DEFAULT NULL,
+  `RESOURCE_TYPE` ENUM('STUDY', 'PATIENT', 'SAMPLE') NOT NULL,
+  `OPEN_BY_DEFAULT` BOOLEAN DEFAULT 0,
+  `PRIORITY` int(11) NOT NULL,
+  `CANCER_STUDY_ID` int(11) NOT NULL,
+  PRIMARY KEY (`RESOURCE_ID`,`CANCER_STUDY_ID`),
+  FOREIGN KEY (`CANCER_STUDY_ID`) REFERENCES `cancer_study` (`CANCER_STUDY_ID`) ON DELETE CASCADE
+);
+
+-- --------------------------------------------------------
+CREATE TABLE `resource_sample` (
+  `INTERNAL_ID` int(11) NOT NULL,
+  `RESOURCE_ID` varchar(255) NOT NULL,
+  `URL` varchar(255) NOT NULL,
+  PRIMARY KEY (`INTERNAL_ID`, `RESOURCE_ID`, `URL`),
+  FOREIGN KEY (`INTERNAL_ID`) REFERENCES `sample` (`INTERNAL_ID`) ON DELETE CASCADE
+);
+
+-- --------------------------------------------------------
+CREATE TABLE `resource_patient` (
+  `INTERNAL_ID` int(11) NOT NULL,
+  `RESOURCE_ID` varchar(255) NOT NULL,
+  `URL` varchar(255) NOT NULL,
+  PRIMARY KEY (`INTERNAL_ID`, `RESOURCE_ID`, `URL`),
+  FOREIGN KEY (`INTERNAL_ID`) REFERENCES `patient` (`INTERNAL_ID`) ON DELETE CASCADE
+);
+
+-- --------------------------------------------------------
+CREATE TABLE `resource_study` (
+  `INTERNAL_ID` int(11) NOT NULL,
+  `RESOURCE_ID` varchar(255) NOT NULL,
+  `URL` varchar(255) NOT NULL,
+  PRIMARY KEY (`INTERNAL_ID`, `RESOURCE_ID`, `URL`),
+  FOREIGN KEY (`INTERNAL_ID`) REFERENCES `cancer_study` (`CANCER_STUDY_ID`) ON DELETE CASCADE
+);
+
 -- THIS MUST BE KEPT IN SYNC WITH db.version PROPERTY IN pom.xml
-INSERT INTO info VALUES ('2.11.0', NULL);
+INSERT INTO info VALUES ('2.12.8', NULL);

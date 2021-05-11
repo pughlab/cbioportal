@@ -6,7 +6,9 @@ import io.swagger.annotations.ApiParam;
 import org.cbioportal.model.Gene;
 import org.cbioportal.service.GeneService;
 import org.cbioportal.service.exception.GeneNotFoundException;
+import org.cbioportal.service.exception.GeneWithMultipleEntrezIdsException;
 import org.cbioportal.web.config.annotation.PublicApi;
+import org.cbioportal.web.config.PublicApiTags;
 import org.cbioportal.web.parameter.Direction;
 import org.cbioportal.web.parameter.GeneIdType;
 import org.cbioportal.web.parameter.HeaderKeyConstants;
@@ -34,11 +36,8 @@ import java.util.List;
 @PublicApi
 @RestController
 @Validated
-@Api(tags = "N. Genes", description = " ")
+@Api(tags = PublicApiTags.GENES, description = " ")
 public class GeneController {
-
-    private static final int GENE_MAX_PAGE_SIZE = 100000;
-    private static final String GENE_DEFAULT_PAGE_SIZE = "100000";
 
     @Autowired
     private GeneService geneService;
@@ -53,9 +52,9 @@ public class GeneController {
         @ApiParam("Level of detail of the response")
         @RequestParam(defaultValue = "SUMMARY") Projection projection,
         @ApiParam("Page size of the result list")
-        @Max(GENE_MAX_PAGE_SIZE)
+        @Max(PagingConstants.MAX_PAGE_SIZE)
         @Min(PagingConstants.MIN_PAGE_SIZE)
-        @RequestParam(defaultValue = GENE_DEFAULT_PAGE_SIZE) Integer pageSize,
+        @RequestParam(defaultValue = PagingConstants.DEFAULT_PAGE_SIZE) Integer pageSize,
         @ApiParam("Page number of the result list")
         @Min(PagingConstants.MIN_PAGE_NUMBER)
         @RequestParam(defaultValue = PagingConstants.DEFAULT_PAGE_NUMBER) Integer pageNumber,
@@ -80,7 +79,7 @@ public class GeneController {
     @ApiOperation("Get a gene")
     public ResponseEntity<Gene> getGene(
         @ApiParam(required = true, value = "Entrez Gene ID or Hugo Gene Symbol e.g. 1 or A1BG")
-        @PathVariable String geneId) throws GeneNotFoundException {
+        @PathVariable String geneId) throws GeneNotFoundException, GeneWithMultipleEntrezIdsException {
 
         return new ResponseEntity<>(geneService.getGene(geneId), HttpStatus.OK);
     }
@@ -90,7 +89,7 @@ public class GeneController {
     @ApiOperation("Get aliases of a gene")
     public ResponseEntity<List<String>> getAliasesOfGene(
         @ApiParam(required = true, value = "Entrez Gene ID or Hugo Gene Symbol e.g. 1 or A1BG")
-        @PathVariable String geneId) throws GeneNotFoundException {
+        @PathVariable String geneId) throws GeneNotFoundException, GeneWithMultipleEntrezIdsException {
 
         return new ResponseEntity<>(geneService.getAliasesOfGene(geneId), HttpStatus.OK);
     }
@@ -102,7 +101,7 @@ public class GeneController {
         @ApiParam("Type of gene ID")
         @RequestParam(defaultValue = "ENTREZ_GENE_ID") GeneIdType geneIdType,
         @ApiParam(required = true, value = "List of Entrez Gene IDs or Hugo Gene Symbols")
-        @Size(min = 1, max = GENE_MAX_PAGE_SIZE)
+        @Size(min = 1, max = PagingConstants.MAX_PAGE_SIZE)
         @RequestBody List<String> geneIds,
         @ApiParam("Level of detail of the response")
         @RequestParam(defaultValue = "SUMMARY") Projection projection) {
