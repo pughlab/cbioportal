@@ -14,7 +14,10 @@ import org.cbioportal.persistence.MolecularProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Repository
@@ -42,22 +45,18 @@ public class AlterationMyBatisRepository implements AlterationRepository {
             return Collections.emptyList();
         }
 
-        List<String> molecularProfileIds = molecularProfileCaseIdentifiers
-            .stream()
-            .map(MolecularProfileCaseIdentifier::getMolecularProfileId)
-            .distinct()
-            .collect(Collectors.toList());
+        Set<String> molecularProfileIds = molecularProfileCaseIdentifiers.stream()
+                .map(MolecularProfileCaseIdentifier::getMolecularProfileId)
+                .collect(Collectors.toSet());
 
         Map<String, MolecularAlterationType> profileTypeByProfileId = molecularProfileRepository
-            .getMolecularProfiles(molecularProfileIds, "SUMMARY")
-            .stream()
-            .collect(Collectors.toMap(datum -> datum.getMolecularProfileId().toString(), MolecularProfile::getMolecularAlterationType));
+                .getMolecularProfiles(molecularProfileIds, "SUMMARY").stream()
+                .collect(Collectors.toMap(MolecularProfile::getStableId, MolecularProfile::getMolecularAlterationType));
 
-        Map<MolecularAlterationType, List<MolecularProfileCaseIdentifier>> groupedIdentifiersByProfileType =
-            alterationCountsMapper.getMolecularProfileCaseInternalIdentifier(molecularProfileCaseIdentifiers, "SAMPLE_ID")
-            .stream()
-            .collect(Collectors.groupingBy(e -> profileTypeByProfileId.getOrDefault(e.getMolecularProfileId(), null)));
-
+        Map<MolecularAlterationType, List<MolecularProfileCaseIdentifier>> groupedIdentifiersByProfileType = molecularProfileCaseIdentifiers
+                .stream().collect(Collectors.groupingBy(e -> {
+                    return profileTypeByProfileId.getOrDefault(e.getMolecularProfileId(), null);
+                }));
         return alterationCountsMapper.getSampleAlterationCounts(
             groupedIdentifiersByProfileType.get(MolecularAlterationType.MUTATION_EXTENDED),
             groupedIdentifiersByProfileType.get(MolecularAlterationType.COPY_NUMBER_ALTERATION),
@@ -84,22 +83,18 @@ public class AlterationMyBatisRepository implements AlterationRepository {
             return Collections.emptyList();
         }
 
-        List<String> molecularProfileIds = molecularProfileCaseIdentifiers
-            .stream()
-            .map(MolecularProfileCaseIdentifier::getMolecularProfileId)
-            .distinct()
-            .collect(Collectors.toList());
+        Set<String> molecularProfileIds = molecularProfileCaseIdentifiers.stream()
+                .map(MolecularProfileCaseIdentifier::getMolecularProfileId)
+                .collect(Collectors.toSet());
 
         Map<String, MolecularAlterationType> profileTypeByProfileId = molecularProfileRepository
-            .getMolecularProfiles(molecularProfileIds, "SUMMARY")
-            .stream()
-            .collect(Collectors.toMap(datum -> datum.getMolecularProfileId().toString(), MolecularProfile::getMolecularAlterationType));
+                .getMolecularProfiles(molecularProfileIds, "SUMMARY").stream()
+                .collect(Collectors.toMap(MolecularProfile::getStableId, MolecularProfile::getMolecularAlterationType));
 
-        Map<MolecularAlterationType, List<MolecularProfileCaseIdentifier>> groupedIdentifiersByProfileType =
-            alterationCountsMapper.getMolecularProfileCaseInternalIdentifier(molecularProfileCaseIdentifiers, "PATIENT_ID")
-            .stream()
-            .collect(Collectors.groupingBy(e -> profileTypeByProfileId.getOrDefault(e.getMolecularProfileId(), null)));
-
+        Map<MolecularAlterationType, List<MolecularProfileCaseIdentifier>> groupedIdentifiersByProfileType = molecularProfileCaseIdentifiers
+                .stream().collect(Collectors.groupingBy(e -> {
+                    return profileTypeByProfileId.getOrDefault(e.getMolecularProfileId(), null);
+                }));
 
         return alterationCountsMapper.getPatientAlterationCounts(
             groupedIdentifiersByProfileType.get(MolecularAlterationType.MUTATION_EXTENDED),
@@ -120,11 +115,9 @@ public class AlterationMyBatisRepository implements AlterationRepository {
             || cnaEventTypes == null || cnaEventTypes.hasNone()) {
             return Collections.emptyList();
         }
-        List<MolecularProfileCaseIdentifier> molecularProfileCaseInternalIdentifiers =
-            alterationCountsMapper.getMolecularProfileCaseInternalIdentifier(molecularProfileCaseIdentifiers, "SAMPLE_ID");
-
+        
         return alterationCountsMapper.getSampleCnaCounts(
-            molecularProfileCaseInternalIdentifiers,
+            molecularProfileCaseIdentifiers,
             entrezGeneIds,
             createCnaTypeList(cnaEventTypes));
     }
@@ -138,15 +131,13 @@ public class AlterationMyBatisRepository implements AlterationRepository {
             || cnaEventTypes == null || cnaEventTypes.hasNone()) {
             return Collections.emptyList();
         }
-        List<MolecularProfileCaseIdentifier> molecularProfileCaseInternalIdentifiers =
-            alterationCountsMapper.getMolecularProfileCaseInternalIdentifier(molecularProfileCaseIdentifiers, "PATIENT_ID");
-
+        
         return alterationCountsMapper.getPatientCnaCounts(
-            molecularProfileCaseInternalIdentifiers,
+            molecularProfileCaseIdentifiers,
             entrezGeneIds,
             createCnaTypeList(cnaEventTypes));
     }
-
+    
     private Select<Short> createCnaTypeList(final Select<CNA> cnaEventTypes) {
         return cnaEventTypes != null ? cnaEventTypes.map(CNA::getCode) : Select.none();
     }
