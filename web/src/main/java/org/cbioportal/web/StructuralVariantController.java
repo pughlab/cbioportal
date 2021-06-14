@@ -30,8 +30,9 @@ import org.cbioportal.web.parameter.StructuralVariantFilter;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+
+import org.cbioportal.web.config.PublicApiTags;
 import org.cbioportal.web.config.annotation.PublicApi;
-import org.cbioportal.web.parameter.SampleMolecularIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -51,13 +52,13 @@ import java.util.*;
 @PublicApi
 @RestController
 @Validated
-@Api(tags = "Q. Structural Variants", description = " ")
+@Api(tags = PublicApiTags.STRUCTURAL_VARIANTS, description = " ")
 public class StructuralVariantController {
     @Autowired
     private StructuralVariantService structuralVariantService;
 
     @PreAuthorize("hasPermission(#involvedCancerStudies, 'Collection<CancerStudyId>', 'read')")
-    @RequestMapping(value = "/structuralvariant/fetch", method = RequestMethod.POST,
+    @RequestMapping(value = "/structural-variant/fetch", method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ApiOperation("Fetch structural variants for entrezGeneIds and molecularProfileIds or sampleMolecularIdentifiers")
     public ResponseEntity<List<StructuralVariant>> fetchStructuralVariants(
@@ -67,23 +68,24 @@ public class StructuralVariantController {
             @ApiParam(required = true, value = "List of entrezGeneIds and molecularProfileIds or sampleMolecularIdentifiers")
             @Valid @RequestBody(required = false) StructuralVariantFilter structuralVariantFilter) {
 
-        List<StructuralVariant> structuralVariantList;
+        List<String> molecularProfileIds = new ArrayList<>();
+        List<String> sampleIds = new ArrayList<>();
 
         if (interceptedStructuralVariantFilter.getSampleMolecularIdentifiers() != null) {
-            List<SampleMolecularIdentifier> sampleMolecularIdentifiers = interceptedStructuralVariantFilter.getSampleMolecularIdentifiers();
-            List<String> molecularProfileIds = new ArrayList<>();
-            List<String> sampleIds = new ArrayList<>();
-
-            for (SampleMolecularIdentifier sampleMolecularIdentifier : sampleMolecularIdentifiers) {
-                molecularProfileIds.add(sampleMolecularIdentifier.getMolecularProfileId());
-                sampleIds.add(sampleMolecularIdentifier.getSampleId());
-            }
-            structuralVariantList = structuralVariantService.fetchStructuralVariants(molecularProfileIds, interceptedStructuralVariantFilter.getEntrezGeneIds(), sampleIds);
-
+            interceptedStructuralVariantFilter
+                .getSampleMolecularIdentifiers()
+                .forEach(sampleMolecularIdentifier -> {
+                    sampleIds.add(sampleMolecularIdentifier.getSampleId());
+                    molecularProfileIds.add(sampleMolecularIdentifier.getMolecularProfileId());
+                    
+                });
         } else {
-            List<String> sampleIds = new ArrayList<>();
-            structuralVariantList = structuralVariantService.fetchStructuralVariants(interceptedStructuralVariantFilter.getMolecularProfileIds(), interceptedStructuralVariantFilter.getEntrezGeneIds(), sampleIds);
+            molecularProfileIds.addAll(interceptedStructuralVariantFilter.getMolecularProfileIds());
         }
+        List<StructuralVariant> structuralVariantList = structuralVariantService.fetchStructuralVariants(molecularProfileIds,
+            sampleIds,
+            interceptedStructuralVariantFilter.getEntrezGeneIds());
+
 
         return new ResponseEntity<>(structuralVariantList, HttpStatus.OK);
 

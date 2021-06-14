@@ -5,11 +5,13 @@ import org.cbioportal.model.MutationCountByPosition;
 import org.cbioportal.model.MutationCountByGene;
 import org.cbioportal.model.meta.MutationMeta;
 import org.cbioportal.persistence.MutationRepository;
+import org.cbioportal.persistence.mybatis.util.MolecularProfileCaseIdentifierUtil;
 import org.cbioportal.persistence.mybatis.util.OffsetCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 public class MutationMyBatisRepository implements MutationRepository {
@@ -18,6 +20,8 @@ public class MutationMyBatisRepository implements MutationRepository {
     private MutationMapper mutationMapper;
     @Autowired
     private OffsetCalculator offsetCalculator;
+    @Autowired
+    private MolecularProfileCaseIdentifierUtil molecularProfileCaseIdentifierUtil;
 
     @Override
     public List<Mutation> getMutationsInMolecularProfileBySampleListId(String molecularProfileId, String sampleListId,
@@ -43,8 +47,19 @@ public class MutationMyBatisRepository implements MutationRepository {
                                                                   String projection, Integer pageSize, 
                                                                   Integer pageNumber, String sortBy, String direction) {
 
-        return mutationMapper.getMutationsInMultipleMolecularProfiles(molecularProfileIds, sampleIds, entrezGeneIds, 
-            null, projection, pageSize, offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
+        return molecularProfileCaseIdentifierUtil.getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
+            .entrySet()
+            .stream()
+            .flatMap(entry -> mutationMapper.getMutationsBySampleIds(entry.getKey(),
+                entry.getValue(),
+                entrezGeneIds,
+                null,
+                projection,
+                pageSize,
+                offsetCalculator.calculate(pageSize, pageNumber),
+                sortBy,
+                direction).stream())
+            .collect(Collectors.toList());
     }
 
     @Override
@@ -62,7 +77,7 @@ public class MutationMyBatisRepository implements MutationRepository {
                                                            String projection, Integer pageSize, Integer pageNumber,
                                                            String sortBy, String direction) {
 
-        return mutationMapper.getMutationsBySampleIds(molecularProfileId, sampleIds, entrezGeneIds, snpOnly, projection,
+        return mutationMapper.getMutationsBySampleIds(molecularProfileId, new HashSet<>(sampleIds), entrezGeneIds, snpOnly, projection,
             pageSize, offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
     }
 
@@ -74,42 +89,34 @@ public class MutationMyBatisRepository implements MutationRepository {
     }
 
     @Override
-    public List<MutationCountByGene> getSampleCountByEntrezGeneIdsAndSampleIds(String molecularProfileId,
-                                                                               List<String> sampleIds,
-                                                                               List<Integer> entrezGeneIds) {
-
-        return mutationMapper.getSampleCountByEntrezGeneIdsAndSampleIds(molecularProfileId, sampleIds, entrezGeneIds,
-            null);
-    }
-
-	@Override
-	public List<MutationCountByGene> getSampleCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
-			List<String> sampleIds, List<Integer> entrezGeneIds) {
-        
-        return mutationMapper.getSampleCountInMultipleMolecularProfiles(molecularProfileIds, sampleIds, entrezGeneIds, null);
-	}
-
-    @Override
-    public List<MutationCountByGene> getSampleCountInMultipleMolecularProfilesForFusions(List<String> molecularProfileIds,
-                                                                               List<String> sampleIds, List<Integer> entrezGeneIds) {
-
-        return mutationMapper.getSampleCountInMultipleMolecularProfilesForFusions(molecularProfileIds, 
-                        sampleIds, entrezGeneIds, null);
-    }
-    
-    @Override
-    public List<MutationCountByGene> getPatientCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
-                                                                                List<String> patientIds,
-                                                                                List<Integer> entrezGeneIds) {
-
-        return mutationMapper.getPatientCountInMultipleMolecularProfiles(molecularProfileIds, patientIds, entrezGeneIds,
-            null);
-    }
-
-    @Override
     public MutationCountByPosition getMutationCountByPosition(Integer entrezGeneId, Integer proteinPosStart,
                                                               Integer proteinPosEnd) {
 
         return mutationMapper.getMutationCountByPosition(entrezGeneId, proteinPosStart, proteinPosEnd);
     }
+
+    // TODO: cleanup once fusion/structural data is fixed in database
+    @Override
+    public List<Mutation> getFusionsInMultipleMolecularProfiles(List<String> molecularProfileIds,
+            List<String> sampleIds, List<Integer> entrezGeneIds, String projection, Integer pageSize,
+            Integer pageNumber, String sortBy, String direction) {
+
+        return molecularProfileCaseIdentifierUtil
+            .getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
+            .entrySet()
+            .stream()
+            .flatMap(entry -> mutationMapper.getFusionsInMultipleMolecularProfiles(
+                Arrays.asList(entry.getKey()),
+                new ArrayList<>(entry.getValue()),
+                entrezGeneIds,
+                null,
+                projection,
+                pageSize,
+                offsetCalculator.calculate(pageSize, pageNumber),
+                sortBy,
+                direction).stream())
+            .collect(Collectors.toList());
+    }
+    // TODO: cleanup once fusion/structural data is fixed in database
+
 }

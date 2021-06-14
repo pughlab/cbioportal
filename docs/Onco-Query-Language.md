@@ -56,6 +56,7 @@ Keyword | Applicable Data Type | Explanation
 `DRIVER` | Mutations <br> Fusions <br> Copy Number Alterations | Include only mutations, fusions and copy number alterations which are driver events, as defined in OncoPrint (default: OncoKB and CancerHotspots).
 `GERMLINE` | Mutations | Include only mutations that are defined as germline events by the study.
 `SOMATIC` | Mutations | Include all mutations that are not defined as germline.
+`(a-b)` (protein position range) | Mutations | Include all mutations that overlap with the protein position range `a-b`, where `a` and `b` are integers. If you add a `*` (i.e. `(a-b*)`) then it will only include those mutations that are fully contained inside `a-b`. The open-ended ranges `(a-)` and `(-b)` are also allowed. 
 
 <br>
 
@@ -135,6 +136,14 @@ TP53: MUT = TRUNC INFRAME
 TP53: TRUNC INFRAME
 ```
 
+OQL can also be used to exclude a specific protein change, position or type of mutation. For example, below are examples to query all EGFR mutations except T790M, all BRAF mutations except those at V600 and all TP53 mutations except missense:
+```
+EGFR: MUT != T790M
+BRAF: MUT != V600
+TP53: MUT != MISSENSE
+```
+Note that this will only work to exclude a single event. Because OQL uses 'OR' logic, excluding multiple mutations or excluding a mutation while including another mutation (e.g. `BRAF: MUT=V600 MUT!=V600E`) will result in querying all mutations.
+
 
 <br>
 
@@ -186,7 +195,7 @@ Modifiers can be used on their own or in combination with other OQL terms for mu
 
 <a name="driver"></a>
 ### Driver
-The `DRIVER` modifier applies to mutations, fusions and copy number alterations. The definition of what qualifies as a driver alteration comes from the "Mutation Color" menu in OncoPrint. By default, drivers are defined as mutations, fusions and copy number alterations in <a href="http://oncokb.org">OncoKB</a> or <a href="http://www.cancerhotspots.org">CancerHotspots</a>.
+The `DRIVER` modifier applies to mutations, fusions and copy number alterations. The definition of what qualifies as a driver alteration comes from the "Mutation Color" menu in OncoPrint. By default, drivers are defined as mutations, fusions and copy number alterations in <a href="https://www.oncokb.org">OncoKB</a> or <a href="https://www.cancerhotspots.org">CancerHotspots</a>.
 
 On its own, the `DRIVER` modifier includes driver mutations, fusions and copy number alterations:
 ```
@@ -328,6 +337,6 @@ This shows that alterations in these genes are almost entirely mutually-exclusiv
 
 <a name="questions-feedback"></a>
 ## Questions? Feedback?
-Please share any questions or feedback on OQL with us: <http://groups.google.com/group/cbioportal>
+Please share any questions or feedback on OQL with us: <https://groups.google.com/group/cbioportal>
 
 Also note that additional explanation and examples using OQL are available in the [OQL tutorial](https://www.cbioportal.org/tutorials#oql).

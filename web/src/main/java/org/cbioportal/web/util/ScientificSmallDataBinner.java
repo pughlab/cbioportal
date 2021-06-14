@@ -7,20 +7,17 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
 public class ScientificSmallDataBinner {
+    
+    @Autowired
     private DataBinHelper dataBinHelper;
 
-    @Autowired
-    public ScientificSmallDataBinner(DataBinHelper dataBinHelper) {
-        this.dataBinHelper = dataBinHelper;
-    }
-
-    public List<DataBin> calculateDataBins(String attributeId,
-                                           List<BigDecimal> sortedNumericalValues,
+    public List<DataBin> calculateDataBins(List<BigDecimal> sortedNumericalValues,
                                            List<BigDecimal> valuesWithoutOutliers,
                                            BigDecimal lowerOutlier,
                                            BigDecimal upperOutlier) {
@@ -29,6 +26,8 @@ public class ScientificSmallDataBinner {
             .map(d -> BigDecimal.valueOf(dataBinHelper.calcExponent(d)))
             .filter(d -> d.compareTo(new BigDecimal("0")) != 0)
             .collect(Collectors.toList());
+
+        Collections.sort(exponents);
 
         Range<BigDecimal> exponentBoxRange = dataBinHelper.calcBoxRange(exponents);
 
@@ -73,7 +72,6 @@ public class ScientificSmallDataBinner {
             }
         }
 
-        return dataBinHelper.initDataBins(
-            attributeId, valuesWithoutOutliers, intervals, lowerOutlier, upperOutlier);
+        return dataBinHelper.initDataBins(valuesWithoutOutliers, intervals, lowerOutlier, upperOutlier);
     }
 }

@@ -8,19 +8,20 @@ import org.cbioportal.model.ClinicalAttribute;
 import org.cbioportal.model.ClinicalData;
 import org.cbioportal.model.ClinicalDataCount;
 import org.cbioportal.model.ClinicalDataCountItem;
-import org.cbioportal.model.ClinicalDataCountItem.ClinicalDataType;
 import org.cbioportal.model.ClinicalDataEnrichment;
 import org.cbioportal.model.Sample;
 import org.cbioportal.service.ClinicalAttributeService;
 import org.cbioportal.service.ClinicalDataService;
 import org.cbioportal.service.SampleService;
+import org.cbioportal.service.util.ClinicalAttributeUtil;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.Spy;
+import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ClinicalDataEnrichmentUtilTest {
@@ -54,6 +55,9 @@ public class ClinicalDataEnrichmentUtilTest {
 
     @Mock
     private SampleService sampleService;
+    
+    @Spy
+    private ClinicalAttributeUtil clinicalAttributeUtil = new ClinicalAttributeUtil();
 
     @Test
     public void fetchClinicalDataEnrichemnts() {
@@ -135,30 +139,24 @@ public class ClinicalDataEnrichmentUtilTest {
 
         ClinicalDataCountItem group1sampleClinicalDataCountItem = new ClinicalDataCountItem();
         group1sampleClinicalDataCountItem.setAttributeId(CLINICAL_ATTRIBUTE_ID_1);
-        group1sampleClinicalDataCountItem.setClinicalDataType(ClinicalDataType.SAMPLE);
         group1sampleClinicalDataCountItem.setCounts(Arrays.asList(sampleClinicalDataCount1, sampleClinicalDataCount2));
 
         ClinicalDataCountItem group1patientClinicalDataCountItem = new ClinicalDataCountItem();
         group1patientClinicalDataCountItem.setAttributeId(CLINICAL_ATTRIBUTE_ID_2);
-        group1patientClinicalDataCountItem.setClinicalDataType(ClinicalDataType.PATIENT);
         group1patientClinicalDataCountItem
                 .setCounts(Arrays.asList(patientClinicalDataCount1, patientClinicalDataCount2));
 
-        Mockito.when(clinicalDataService.fetchClinicalDataCounts(Mockito.anyListOf(String.class),
-                Mockito.anyListOf(String.class), Mockito.anyListOf(String.class), Mockito.any(ClinicalDataType.class)))
+        Mockito.when(clinicalDataService.fetchClinicalDataCounts(Mockito.anyList(),
+                Mockito.anyList(), Mockito.anyList()))
                 .thenReturn(new ArrayList<ClinicalDataCountItem>());
 
         // when there is no data
         Assert.assertTrue(
                 clinicalDataEnrichmentUtil.createEnrichmentsForCategoricalData(attributes, groupedSamples).isEmpty());
 
-        Mockito.when(clinicalDataService.fetchClinicalDataCounts(Arrays.asList(STUDY_ID1, STUDY_ID1),
-                Arrays.asList(SAMPLE_ID1, SAMPLE_ID2), Arrays.asList(CLINICAL_ATTRIBUTE_ID_1), ClinicalDataType.SAMPLE))
-                .thenReturn(Arrays.asList(group1sampleClinicalDataCountItem));
 
         Mockito.when(clinicalDataService.fetchClinicalDataCounts(Arrays.asList(STUDY_ID1, STUDY_ID1),
-                Arrays.asList(SAMPLE_ID1, SAMPLE_ID2), Arrays.asList(CLINICAL_ATTRIBUTE_ID_2),
-                ClinicalDataType.PATIENT)).thenReturn(Arrays.asList(group1patientClinicalDataCountItem));
+                Arrays.asList(SAMPLE_ID1, SAMPLE_ID2), Arrays.asList(CLINICAL_ATTRIBUTE_ID_1, CLINICAL_ATTRIBUTE_ID_2))).thenReturn(Arrays.asList(group1sampleClinicalDataCountItem, group1patientClinicalDataCountItem));
 
         // where there are no attributes with STRING datatype
         Assert.assertTrue(clinicalDataEnrichmentUtil
@@ -186,22 +184,15 @@ public class ClinicalDataEnrichmentUtilTest {
 
         ClinicalDataCountItem group2sampleClinicalDataCountItem = new ClinicalDataCountItem();
         group2sampleClinicalDataCountItem.setAttributeId(CLINICAL_ATTRIBUTE_ID_1);
-        group2sampleClinicalDataCountItem.setClinicalDataType(ClinicalDataType.SAMPLE);
         group2sampleClinicalDataCountItem.setCounts(Arrays.asList(sampleClinicalDataCount3));
 
         ClinicalDataCountItem group2patientClinicalDataCountItem = new ClinicalDataCountItem();
         group2patientClinicalDataCountItem.setAttributeId(CLINICAL_ATTRIBUTE_ID_2);
-        group2patientClinicalDataCountItem.setClinicalDataType(ClinicalDataType.PATIENT);
         group2patientClinicalDataCountItem.setCounts(Arrays.asList(patientClinicalDataCount3));
 
         // data only for string datatype and for all groups
         Mockito.when(clinicalDataService.fetchClinicalDataCounts(Arrays.asList(STUDY_ID2, STUDY_ID2, STUDY_ID2),
-                Arrays.asList(SAMPLE_ID3, SAMPLE_ID4, SAMPLE_ID5), Arrays.asList(CLINICAL_ATTRIBUTE_ID_1),
-                ClinicalDataType.SAMPLE)).thenReturn(Arrays.asList(group2sampleClinicalDataCountItem));
-
-        Mockito.when(clinicalDataService.fetchClinicalDataCounts(Arrays.asList(STUDY_ID2, STUDY_ID2, STUDY_ID2),
-                Arrays.asList(SAMPLE_ID3, SAMPLE_ID4, SAMPLE_ID5), Arrays.asList(CLINICAL_ATTRIBUTE_ID_2),
-                ClinicalDataType.PATIENT)).thenReturn(Arrays.asList(group2patientClinicalDataCountItem));
+                Arrays.asList(SAMPLE_ID3, SAMPLE_ID4, SAMPLE_ID5), Arrays.asList(CLINICAL_ATTRIBUTE_ID_1,CLINICAL_ATTRIBUTE_ID_2))).thenReturn(Arrays.asList(group2sampleClinicalDataCountItem, group2patientClinicalDataCountItem));
 
         actualClinicalDataEnrichments = clinicalDataEnrichmentUtil.createEnrichmentsForCategoricalData(attributes,
                 groupedSamples);
@@ -297,8 +288,8 @@ public class ClinicalDataEnrichmentUtilTest {
         patientClinicalData2.setStudyId(STUDY_ID1);
 
         Mockito.when(
-                clinicalDataService.fetchClinicalData(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class),
-                        Mockito.anyListOf(String.class), Mockito.any(String.class), Mockito.any(String.class)))
+                clinicalDataService.fetchClinicalData(Mockito.anyList(), Mockito.anyList(),
+                        Mockito.anyList(), Mockito.any(String.class), Mockito.any(String.class)))
                 .thenReturn(new ArrayList<ClinicalData>());
 
         // when no data
@@ -369,6 +360,6 @@ public class ClinicalDataEnrichmentUtilTest {
         Assert.assertEquals(2, actualClinicalDataEnrichments.size());
         Assert.assertEquals("0.7670968826920188", actualClinicalDataEnrichments.get(0).getpValue().toString());
         Assert.assertEquals("0.08771942638231253", actualClinicalDataEnrichments.get(0).getScore().toString());
-        Assert.assertEquals("Kruskal Wallis Test", actualClinicalDataEnrichments.get(0).getMethod());
+        Assert.assertEquals("Wilcoxon Test", actualClinicalDataEnrichments.get(0).getMethod());
     }
 }

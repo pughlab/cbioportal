@@ -18,18 +18,19 @@
 package org.cbioportal.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.servlet.http.HttpSession;
+import org.cbioportal.model.DataAccessToken;
+import org.cbioportal.service.DataAccessTokenService;
+import org.cbioportal.service.exception.TokenNotFoundException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Matchers;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.web.FilterChainProxy;
@@ -42,11 +43,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 
-import org.cbioportal.model.DataAccessToken;
-import org.cbioportal.service.DataAccessTokenService;
-import org.cbioportal.service.exception.TokenNotFoundException;
+import javax.servlet.http.HttpSession;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(locations={"/applicationContext-web.xml", "/applicationContext-security-test.xml"})
@@ -144,7 +142,7 @@ public class DataAccessTokenControllerTest {
                 return null;
             }
         };
-        Mockito.doAnswer(tokenServiceRevokeTokenAnswer).when(tokenService).revokeDataAccessToken(Matchers.anyString());
+        Mockito.doAnswer(tokenServiceRevokeTokenAnswer).when(tokenService).revokeDataAccessToken(ArgumentMatchers.anyString());
         HttpSession session = getSession(MOCK_USER, MOCK_PASSWORD);
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.delete("/data-access-tokens/" + VALID_TOKEN_STRING)
             .session((MockHttpSession) session)
@@ -182,7 +180,7 @@ public class DataAccessTokenControllerTest {
      */
     @Test
     public void createTokenValidUserTest() throws Exception {
-        Mockito.when(tokenService.createDataAccessToken(Matchers.anyString())).thenReturn(MOCK_TOKEN_INFO);
+        Mockito.when(tokenService.createDataAccessToken(ArgumentMatchers.anyString())).thenReturn(MOCK_TOKEN_INFO);
         HttpSession session = getSession(MOCK_USER, MOCK_PASSWORD);
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.post("/data-access-tokens")
             .session((MockHttpSession) session)
@@ -205,7 +203,7 @@ public class DataAccessTokenControllerTest {
                 return null;
             }
         };
-        Mockito.doAnswer(tokenServiceRevokeAllTokensAnswer).when(tokenService).revokeAllDataAccessTokens(Matchers.anyString());
+        Mockito.doAnswer(tokenServiceRevokeAllTokensAnswer).when(tokenService).revokeAllDataAccessTokens(ArgumentMatchers.anyString());
         HttpSession session = getSession(MOCK_USER, MOCK_PASSWORD);
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.delete("/data-access-tokens")
             .session((MockHttpSession) session)
@@ -231,7 +229,7 @@ public class DataAccessTokenControllerTest {
                 return null;
             }
         };
-        Mockito.doAnswer(tokenServiceGetAllTokensAnswer).when(tokenService).getAllDataAccessTokens(Matchers.anyString());
+        Mockito.doAnswer(tokenServiceGetAllTokensAnswer).when(tokenService).getAllDataAccessTokens(ArgumentMatchers.anyString());
         HttpSession session = getSession(MOCK_USER, MOCK_PASSWORD);
         MvcResult result = mockMvc.perform(MockMvcRequestBuilders.get("/data-access-tokens")
             .session((MockHttpSession) session)

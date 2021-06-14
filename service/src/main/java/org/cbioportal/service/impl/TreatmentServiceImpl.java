@@ -1,98 +1,180 @@
-/*
- * Copyright (c) 2019 The Hyve B.V.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
- * FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
- * is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
- * obligations to provide maintenance, support, updates, enhancements or
- * modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
- * liable to any party for direct, indirect, special, incidental or
- * consequential damages, including lost profits, arising out of the use of this
- * software and its documentation, even if Memorial Sloan-Kettering Cancer
- * Center has been advised of the possibility of such damage.
- */
-
-/*
- * This file is part of cBioPortal.
- *
- * cBioPortal is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 package org.cbioportal.service.impl;
 
-import java.util.List;
-
-import org.cbioportal.model.Treatment;
-import org.cbioportal.model.meta.BaseMeta;
+import org.cbioportal.model.*;
 import org.cbioportal.persistence.TreatmentRepository;
 import org.cbioportal.service.TreatmentService;
-import org.cbioportal.service.exception.TreatmentNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
+
 @Service
 public class TreatmentServiceImpl implements TreatmentService {
-	
-	
-	@Autowired
-	private TreatmentRepository treatmentRepository;
-	
-	@Override
-	public List<Treatment> getAllTreatments(String projection, Integer pageSize, Integer pageNumber) {
-		return treatmentRepository.getAllTreatments(projection, pageSize, pageNumber);
-	}
-	
-	@Override
-	public BaseMeta getMetaTreatments() {
-		return treatmentRepository.getMetaTreatments();
-	}
+    @Autowired
+    TreatmentRepository treatmentRepository;
+    
+    @Override
+    public List<SampleTreatmentRow> getAllSampleTreatmentRows(List<String> sampleIds, List<String> studyIds) {
+        Map<String, List<ClinicalEventSample>> samplesByPatient = treatmentRepository.getSamplesByPatientId(sampleIds, studyIds);
+        Map<String, List<Treatment>> treatmentsByPatient = treatmentRepository.getTreatmentsByPatientId(sampleIds, studyIds);
 
-	@Override
-	public BaseMeta getMetaTreatments(List<String> treatmentIds) {
-		return null;
-	}
-	
-	@Override
-	public Treatment getTreatment(String treatmentId) throws TreatmentNotFoundException {
-		
-		Treatment treatment = treatmentRepository.getTreatmentByStableId(treatmentId);
-		
-		if (treatment == null) {
-			throw new TreatmentNotFoundException(treatmentId);
-		}
+        Stream<SampleTreatmentRow> rows = samplesByPatient.keySet().stream()
+            .flatMap(patientId -> getSampleTreatmentRowsForPatient(patientId, samplesByPatient, treatmentsByPatient))
+            .filter(row -> row.getCount() != 0);
+        return flattenRows(rows);
+    }
+    
+    private Stream<SampleTreatmentRow> getSampleTreatmentRowsForPatient(
+            String patientId,
+            Map<String, List<ClinicalEventSample>> samplesByPatient,
+            Map<String, List<Treatment>> treatmentsByPatient
+    ) {
+        List<Treatment> treatments = treatmentsByPatient.getOrDefault(patientId, new ArrayList<>());
+        List<ClinicalEventSample> samples = samplesByPatient.get(patientId);
 
-		return treatment;
-	}
+        Map<String, TreatmentRowTriplet> rows = new HashMap<>();
 
-	@Override
-	public List<Treatment> fetchTreatments(List<String> treatmentIds) {
-		return treatmentRepository.fetchTreatments(treatmentIds);
-	}
+        for (Treatment treatment : treatments) {
+            TreatmentRowTriplet triplet;
+            
+            if (!rows.containsKey(treatment.getTreatment())) {
+                triplet = new TreatmentRowTriplet(samples, treatment.getTreatment());
+                rows.put(treatment.getTreatment(), triplet);
+            } else {
+                triplet = rows.get(treatment.getTreatment());
+            }
+            
+            triplet.moveSamplesToPost(treatment);
+        }
 
-	@Override
-	public BaseMeta getMetaTreatmentsInStudies(List<String> studyIds) {
-		return treatmentRepository.getMetaTreatmentsInStudies(studyIds);
-	}
+        return rows.values().stream().flatMap(TreatmentRowTriplet::toRows);
+    }
 
-	@Override
-	public List<Treatment> getTreatments(List<String> treatmentIds, String projection) {
-		return treatmentRepository.getTreatments(treatmentIds, projection);
-	}
-	
-	@Override
-	public List<Treatment> getTreatmentsInStudies(List<String> studyIds, String projection) {
-		return treatmentRepository.getTreatmentsInStudies(studyIds, projection, 0, 0, null, null);
-	}
+    private List<SampleTreatmentRow> flattenRows(Stream<SampleTreatmentRow> rows) {
+        Map<String, SampleTreatmentRow> uniqueRows = new HashMap<>();
+        rows.forEach(rowToAdd -> {
+            if (uniqueRows.containsKey(rowToAdd.key())) {
+                uniqueRows.get(rowToAdd.key()).add(rowToAdd);
+            } else {
+                uniqueRows.put(rowToAdd.key(), rowToAdd);
+            }
+        });
 
+        return new ArrayList<>(uniqueRows.values());
+    }
+
+
+    /**
+     * For a given treatment, you can have samples that are taken
+     * before (pre), after (post), or that don't have a date (unknown)
+     * 
+     * This class accepts an initial list of samples and a treatment.
+     * At the start, all samples are considered pre, as there hasn't been
+     * any treatment start / stop times.
+     * 
+     * You then call moveSamplesToPost on this with a series of matching
+     * treatments. Each call will move samples taken 
+     */
+    private static class TreatmentRowTriplet {
+        private final Set<ClinicalEventSample> pre, post;
+        private final String treatment;
+
+        TreatmentRowTriplet(List<ClinicalEventSample> samples, String treatment) {
+            this.treatment = treatment;
+            post = new HashSet<>();
+            pre = samples.stream()
+                .filter(s -> s.getTimeTaken() != null)
+                .collect(Collectors.toSet());
+        }
+
+        /**
+         * Moves any samples marked as pre that were taken after the treatment
+         * started to post.
+         * 
+         * @param treatment a treatment with a start value. It is assumed that
+         *                  the treatment matches the treatment stored in this triplet
+         */
+        void moveSamplesToPost(Treatment treatment) {
+            for (Iterator<ClinicalEventSample> iterator = pre.iterator(); iterator.hasNext(); ) {
+                ClinicalEventSample clinicalEventSample = iterator.next();
+                // edge case: is a sample taken the same day a treatment starts pre or post?
+                // We're saying pre here
+                if (clinicalEventSample.getTimeTaken() > treatment.getStart()) {
+                    iterator.remove();
+                    post.add(clinicalEventSample);
+                }
+            }
+        }
+        
+        Stream<SampleTreatmentRow> toRows() {
+            return Stream.of(
+                    new SampleTreatmentRow(TemporalRelation.Pre, treatment, pre.size(), pre),
+                    new SampleTreatmentRow(TemporalRelation.Post, treatment, post.size(), post)
+                    // We made the decision to filter out unknown rows. I'm leaving this line of code
+                    // to document this decision.
+                    // new SampleTreatmentRow(TemporalRelation.Unknown, treatment, unknown.size(), unknown)
+            );
+        }
+    }
+
+    @Override
+    public List<PatientTreatmentRow> getAllPatientTreatmentRows(List<String> sampleIds, List<String> studyIds) {
+        Map<String, List<Treatment>> treatmentsByPatient = treatmentRepository.getTreatmentsByPatientId(sampleIds, studyIds);
+        Map<String, List<ClinicalEventSample>> samplesByPatient = treatmentRepository
+            .getShallowSamplesByPatientId(sampleIds, studyIds)
+            .entrySet()
+            .stream()
+            .filter(e -> treatmentsByPatient.containsKey(e.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        Set<String> treatments = treatmentRepository.getAllUniqueTreatments(sampleIds, studyIds);
+
+        return treatments.stream()
+            .map(t -> createPatientTreatmentRowForTreatment(t, treatmentsByPatient, samplesByPatient))
+            .collect(Collectors.toList());
+    }
+
+    private PatientTreatmentRow createPatientTreatmentRowForTreatment(
+        String treatment,
+        Map<String, List<Treatment>> treatmentsByPatient,
+        Map<String, List<ClinicalEventSample>> samplesByPatient
+    ) {
+        // find all the patients that have received this treatment
+        List<Map.Entry<String, List<Treatment>>> matchingPatients = matchingPatients(treatment, treatmentsByPatient);
+
+        // from those patients, extract the unique samples
+        Set<ClinicalEventSample> samples = matchingPatients
+            .stream()
+            .map(Map.Entry::getKey)
+            .flatMap(patient -> samplesByPatient.getOrDefault(patient, new ArrayList<>()).stream())
+            .collect(Collectors.toSet());
+
+
+        return new PatientTreatmentRow(treatment, matchingPatients.size(), samples);
+    }
+
+    private List<Map.Entry<String, List<Treatment>>> matchingPatients(
+        String treatment,
+        Map<String, List<Treatment>> treatmentsByPatient
+    ) {
+        return treatmentsByPatient.entrySet().stream()
+            .filter(p -> p.getValue().stream().anyMatch(t -> t.getTreatment().equals(treatment)))
+            .collect(toList());
+    }
+
+    @Override
+    public Boolean containsTreatmentData(List<String> studies) {
+        return treatmentRepository.getTreatmentCount(studies) > 0;
+    }
+
+    @Override
+    public Boolean containsSampleTreatmentData(List<String> studies) {
+        Integer sampleCount = treatmentRepository.getSampleCount(studies);
+        Integer treatmentCount = treatmentRepository.getTreatmentCount(studies);
+        
+        return sampleCount * treatmentCount > 0;
+    }
 }

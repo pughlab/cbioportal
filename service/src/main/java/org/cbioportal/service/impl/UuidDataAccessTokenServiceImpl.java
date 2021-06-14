@@ -32,21 +32,23 @@
 
 package org.cbioportal.service.impl;
 
-import java.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.cbioportal.model.DataAccessToken;
 import org.cbioportal.persistence.DataAccessTokenRepository;
 import org.cbioportal.service.DataAccessTokenService;
-import org.cbioportal.service.exception.MaxNumberTokensExceededException;
 import org.cbioportal.service.exception.TokenNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
-@Service
-@Component("uuid")
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
 public class UuidDataAccessTokenServiceImpl implements DataAccessTokenService {
 
     @Autowired
@@ -58,31 +60,19 @@ public class UuidDataAccessTokenServiceImpl implements DataAccessTokenService {
     @Value("${dat.uuid.max_number_per_user:-1}")
     private int maxNumberOfAccessTokens;
 
-    @Value("${dat.uuid.revoke_other_tokens:true}")
-    private boolean revokeOtherTokens;
-
     private static final Log log = LogFactory.getLog(UuidDataAccessTokenServiceImpl.class);
-
-    @Override
-    public DataAccessToken createDataAccessToken(String username) {
-        return createDataAccessToken(username, revokeOtherTokens);
-    }
 
     // create a data access token (randomly generated UUID) and insert corresponding record into table with parts:
     // username
     // uuid
     // expiration date (current time + 1 month)
     @Override
-    public DataAccessToken createDataAccessToken(String username, boolean allowRevocationOfOtherTokens) {
+    public DataAccessToken createDataAccessToken(String username) {
         if (username == null || username.trim().length() == 0) {
             throw new IllegalArgumentException("username cannot be empty");
         }
         if (getNumberOfTokensForUsername(username) >= maxNumberOfAccessTokens) {
-            if (allowRevocationOfOtherTokens) {
-                revokeOldestDataAccessTokenForUsername(username);
-            } else {
-                throw new MaxNumberTokensExceededException("User has reached max number of tokens allowed (" + maxNumberOfAccessTokens + "). An existing token must expire or be revoked before another token can be assigned.");
-            }
+            revokeOldestDataAccessTokenForUsername(username);
         }
         String uuid = UUID.randomUUID().toString();
         Calendar calendar = Calendar.getInstance();
@@ -172,5 +162,21 @@ public class UuidDataAccessTokenServiceImpl implements DataAccessTokenService {
         List<DataAccessToken> allDataAccessTokens = dataAccessTokenRepository.getAllDataAccessTokensForUsername(username);
         DataAccessToken oldestDataAccessToken = allDataAccessTokens.get(0);
         dataAccessTokenRepository.removeDataAccessToken(oldestDataAccessToken.getToken());
+    }
+
+    @Override
+    public Authentication createAuthenticationRequest(String token) {
+
+        if (!isValid(token)) {
+            log.error("invalid token = " + token);
+            throw new BadCredentialsException("Invalid access token");
+        }
+        String userName = getUsername(token);
+
+        // when DaoAuthenticationProvider does authentication on user returned by PortalUserDetailsService
+        // which has password "unused", this password won't match, and then there is a BadCredentials exception thrown
+        // this is a good way to catch that the wrong authetication provider is being used
+        return new UsernamePasswordAuthenticationToken(userName, "does not match unused");
+
     }
 }

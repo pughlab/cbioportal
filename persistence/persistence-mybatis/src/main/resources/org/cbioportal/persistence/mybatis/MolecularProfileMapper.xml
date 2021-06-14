@@ -17,7 +17,8 @@
             genetic_profile.DESCRIPTION AS "${prefix}description",
             genetic_profile.SHOW_PROFILE_IN_ANALYSIS_TAB AS "${prefix}showProfileInAnalysisTab",
             genetic_profile.PIVOT_THRESHOLD AS "${prefix}pivotThreshold",
-            genetic_profile.SORT_ORDER AS "${prefix}sortOrder"
+            genetic_profile.SORT_ORDER AS "${prefix}sortOrder",
+            genetic_profile.GENERIC_ASSAY_TYPE AS "${prefix}genericAssayType"
         </if>
         <if test="projection == 'DETAILED'">
             ,
@@ -100,9 +101,9 @@
         COUNT(*) AS totalCount
         FROM genetic_profile
         <where>
-            <if test="list != null and !list.isEmpty()">
+            <if test="molecularProfileIds != null and !molecularProfileIds.isEmpty()">
                 genetic_profile.STABLE_ID IN
-                <foreach item="item" collection="list" open="(" separator="," close=")">
+                <foreach item="item" collection="molecularProfileIds" open="(" separator="," close=")">
                     #{item}
                 </foreach>
             </if>

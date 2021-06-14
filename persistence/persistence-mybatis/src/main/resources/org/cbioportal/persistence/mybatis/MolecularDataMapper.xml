@@ -21,21 +21,20 @@
         </where>
     </sql>
 
-    <select id="getCommaSeparatedSampleIdsOfMolecularProfiles" resultType="string">
-        SELECT genetic_profile_samples.ORDERED_SAMPLE_LIST
+    <select id="getCommaSeparatedSampleIdsOfMolecularProfiles" resultType="org.cbioportal.model.MolecularProfileSamples">
+        SELECT 
+        genetic_profile.STABLE_ID AS molecularProfileId,
+        genetic_profile_samples.ORDERED_SAMPLE_LIST AS "commaSeparatedSampleIds"
         FROM genetic_profile_samples
         INNER JOIN genetic_profile ON genetic_profile_samples.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
         <where>
-            <if test="list != null and !list.isEmpty()">
+            <if test="molecularProfileIds != null and !molecularProfileIds.isEmpty()">
                 genetic_profile.STABLE_ID IN
-                <foreach item="item" collection="list" open="(" separator="," close=")">
+                <foreach item="item" collection="molecularProfileIds" open="(" separator="," close=")">
                     #{item}
                 </foreach>
             </if>
         </where>
-        <!-- It seems like in Java, `_` comes before letters when sorted, but in MySQL it comes after. 
-        The code depends on them being the same order, so this is done to make the MySQL ordering same with Java. -->
-        ORDER BY REPLACE(genetic_profile.STABLE_ID, '_', ' '), genetic_profile.STABLE_ID ASC
     </select>
     
     <!-- Any changes to this routine should be kept in sync with getGeneMolecularAlterationsIter below -->
@@ -133,23 +132,55 @@
         </where>
     </select>
 
-     <select id="getTreatmentMolecularAlterations" resultType="org.cbioportal.model.TreatmentMolecularAlteration">
+    <!-- Any changes to this routine should be kept in sync with getGenericAssayMolecularAlterationsIter below -->
+    <select id="getGenericAssayMolecularAlterations" resultType="org.cbioportal.model.GenericAssayMolecularAlteration">
         SELECT
-        treatment.STABLE_ID AS treatmentId,
+        genetic_entity.STABLE_ID AS genericAssayStableId,
+        genetic_profile.STABLE_ID AS molecularProfileId,
         <if test="projection == 'ID'">
-        NULL AS "values"
+            NULL AS "values"
         </if>
         <if test="projection != 'ID'">
-        genetic_alteration.VALUES AS "values"
+            genetic_alteration.VALUES AS "values"
         </if>
         FROM genetic_alteration
         INNER JOIN genetic_profile ON genetic_alteration.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
-        INNER JOIN treatment ON genetic_alteration.GENETIC_ENTITY_ID = treatment.GENETIC_ENTITY_ID
+        INNER JOIN genetic_entity ON genetic_alteration.GENETIC_ENTITY_ID = genetic_entity.ID
         <where>
             genetic_profile.STABLE_ID = #{molecularProfileId}
-            <if test="treatmentIds != null and treatmentIds">
-                AND treatment.STABLE_ID IN
-                <foreach item="item" collection="treatmentIds" open="(" separator="," close=")">
+            <if test="stableIds != null and stableIds">
+                AND genetic_entity.STABLE_ID IN
+                <foreach item="item" collection="stableIds" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <!-- This routine is a copy of getGenericAssayMolecularAlterations above.  This copy is necessary because
+         it is backing a corresponding method in MolecularDataMapper.java which returns a Cursor as
+         opposed to a List. This method should be kept in sync with getGenericAssayMolecularAlterations above.
+         (Attempts where made to share getGenericAssayMolecularAlterations between methods in MolecularDataMapper.java
+         all of which have failed).
+    -->
+    <select id="getGenericAssayMolecularAlterationsIter" resultType="org.cbioportal.model.GenericAssayMolecularAlteration">
+        SELECT
+        genetic_entity.STABLE_ID AS genericAssayStableId,
+        genetic_profile.STABLE_ID AS molecularProfileId,
+        <if test="projection == 'ID'">
+            NULL AS "values"
+        </if>
+        <if test="projection != 'ID'">
+            genetic_alteration.VALUES AS "values"
+        </if>
+        FROM genetic_alteration
+        INNER JOIN genetic_profile ON genetic_alteration.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
+        INNER JOIN genetic_entity ON genetic_alteration.GENETIC_ENTITY_ID = genetic_entity.ID
+        <where>
+            genetic_profile.STABLE_ID = #{molecularProfileId}
+            <if test="stableIds != null and stableIds">
+                AND genetic_entity.STABLE_ID IN
+                <foreach item="item" collection="stableIds" open="(" separator="," close=")">
                     #{item}
                 </foreach>
             </if>

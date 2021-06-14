@@ -1,54 +1,20 @@
-/*
- * Copyright (c) 2019 The Hyve B.V.
- *
- * This library is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
- * FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
- * is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
- * obligations to provide maintenance, support, updates, enhancements or
- * modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
- * liable to any party for direct, indirect, special, incidental or
- * consequential damages, including lost profits, arising out of the use of this
- * software and its documentation, even if Memorial Sloan-Kettering Cancer
- * Center has been advised of the possibility of such damage.
- */
-
-/*
- * This file is part of cBioPortal.
- *
- * cBioPortal is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 package org.cbioportal.web;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.cbioportal.model.Treatment;
-import org.cbioportal.model.meta.BaseMeta;
+import org.cbioportal.model.PatientTreatmentRow;
+import org.cbioportal.model.SampleTreatmentRow;
+import org.cbioportal.model.TemporalRelation;
 import org.cbioportal.service.TreatmentService;
-import org.cbioportal.web.parameter.HeaderKeyConstants;
-import org.cbioportal.web.parameter.TreatmentFilter;
-import org.hamcrest.Matchers;
+import org.cbioportal.web.parameter.SampleIdentifier;
+import org.cbioportal.web.parameter.StudyViewFilter;
+import org.cbioportal.web.util.StudyViewFilterApplier;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
@@ -60,26 +26,16 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
-@ContextConfiguration("/applicationContext-web.xml")
+@ContextConfiguration("/applicationContext-web-test.xml")
 @Configuration
 public class TreatmentControllerTest {
-
-    public static final String TREATMENT_ID_1 = "treatment_id_1";
-    private static final Integer INTERNAL_ID_1 = 1;
-    private static final String DESCRIPTION_1 = "description 1";
-    private static final String REF_LINK_1 = "http://link1";
-    public static final String TREATMENT_ID_2 = "treatment_id_2";
-    private static final Integer INTERNAL_ID_2 = 2;
-    private static final String DESCRIPTION_2 = "description 2";
-    private static final String REF_LINK_2 = "http://link2";
-    public static final String TREATMENT_ID_3 = "treatment_id_3";
-    private static final Integer INTERNAL_ID_3 = 3;
-    private static final String DESCRIPTION_3 = "description 3";
-    private static final String REF_LINK_3 = "http://link3";
-    public static final String STUDY_ID_1 = "study_id_1";
-    public static final String STUDY_ID_2 = "study_id_2";
+    private final List<SampleIdentifier> sampleIdentifiers;
+    private final List<String> studies;
+    private final StudyViewFilter studyViewFilter;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -87,212 +43,117 @@ public class TreatmentControllerTest {
     private WebApplicationContext wac;
 
     @Autowired
+    private StudyViewFilterApplier studyViewFilterApplier;
+    
+    @Autowired
     private TreatmentService treatmentService;
+    
     private MockMvc mockMvc;
-
-    @Bean
-    public TreatmentService treatmentService() {
-        return Mockito.mock(TreatmentService.class);
-    }
-
-    private int treatmentCount = 2;
-    private int studyCount = 3;
-    private List<Treatment> treatmentList;
-    private List<Treatment> treatmentListForStudy;
 
     @Before
     public void setUp() throws Exception {
-
         Mockito.reset(treatmentService);
+        Mockito.reset(studyViewFilterApplier);
         mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
+    }
 
-        treatmentList = createTreatmentList();
-        treatmentListForStudy = createTreatmentListForStudy();
+    public TreatmentControllerTest() {
+        SampleIdentifier sampleIdentifier = new SampleIdentifier();
+        String STUDY_A = "study_0";
+        sampleIdentifier.setStudyId(STUDY_A);
+        String SAMPLE_A = "sample_0";
+        sampleIdentifier.setSampleId(SAMPLE_A);
 
-        BaseMeta baseMetaTreatment = new BaseMeta();
-        baseMetaTreatment.setTotalCount(treatmentCount);
-        BaseMeta baseMetaStudy = new BaseMeta();
-        baseMetaStudy.setTotalCount(studyCount);
+        SampleIdentifier sampleIdentifierB = new SampleIdentifier();
+        String STUDY_B = "study_1";
+        sampleIdentifier.setStudyId(STUDY_B);
+        String SAMPLE_B = "sample_1";
+        sampleIdentifier.setSampleId(SAMPLE_B);
+        sampleIdentifiers = Arrays.asList(sampleIdentifier, sampleIdentifierB);
 
-        Mockito.when(treatmentService.getAllTreatments(Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt()))
-        .thenReturn(treatmentList);
-        Mockito.when(treatmentService.getMetaTreatmentsInStudies(Mockito.anyList()))
-        .thenReturn(baseMetaStudy);
-        Mockito.when(treatmentService.getMetaTreatments(Mockito.anyList()))
-        .thenReturn(baseMetaTreatment);
-        Mockito.when(treatmentService.getTreatmentsInStudies(Mockito.anyList(), Mockito.anyString()))
-        .thenReturn(treatmentListForStudy);
-        Mockito.when(treatmentService.getTreatments(Mockito.anyList(), Mockito.anyString()))
-        .thenReturn(treatmentList);
+        studies = Arrays.asList(STUDY_A, STUDY_B);
+        
+        studyViewFilter = new StudyViewFilter();
+        studyViewFilter.setStudyIds(studies);
+    }
+    
+    @Test
+    public void getAllPatientTreatments() throws Exception {
+        Mockito
+            .when(studyViewFilterApplier.apply(Mockito.any()))
+            .thenReturn(sampleIdentifiers);
+        
+        PatientTreatmentRow rowA = new PatientTreatmentRow("madeupanib", 2, null);
+        PatientTreatmentRow rowB = new PatientTreatmentRow("fakeazil", 4, null);
+        List<PatientTreatmentRow> treatmentRows = Arrays.asList(rowA, rowB);
 
+        Mockito
+            .when(treatmentService.getAllPatientTreatmentRows(Mockito.anyList(), Mockito.anyList()))
+            .thenReturn(treatmentRows);
+        
+        mockMvc.perform(MockMvcRequestBuilders.post(
+            "/treatments/patient")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(studyViewFilter)))
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].treatment").value("madeupanib"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].count").value("2"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].treatment").value("fakeazil"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].count").value("4"));
     }
 
     @Test
-    public void getAllTreatments() throws Exception {
+    public void getAllSampleTreatments() throws Exception {
+        Mockito
+            .when(studyViewFilterApplier.apply(Mockito.any()))
+            .thenReturn(sampleIdentifiers);
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/treatments")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.jsonPath("$", Matchers.hasSize(2)))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].id").doesNotExist())
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].treatmentId").value(TREATMENT_ID_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].name").value(TREATMENT_ID_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].description").value(DESCRIPTION_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].refLink").value(REF_LINK_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].id").doesNotExist())
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].treatmentId").value(TREATMENT_ID_2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].name").value(TREATMENT_ID_2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].description").value(DESCRIPTION_2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].refLink").value(REF_LINK_2));
+        SampleTreatmentRow rowA = new SampleTreatmentRow(TemporalRelation.Pre, "madeupanib", 2, null);
+        SampleTreatmentRow rowB = new SampleTreatmentRow(TemporalRelation.Post, "madeupanib", 4, null);
+        SampleTreatmentRow rowC = new SampleTreatmentRow(TemporalRelation.Pre, "fakeazil", 4, null);
+        SampleTreatmentRow rowD = new SampleTreatmentRow(TemporalRelation.Post, "fakeazil", 2, null);
+        List<SampleTreatmentRow> sampleTreatmentRows = Arrays.asList(rowA, rowB, rowC, rowD);
+
+        Mockito
+            .when(treatmentService.getAllSampleTreatmentRows(Mockito.anyList(), Mockito.anyList()))
+            .thenReturn(sampleTreatmentRows);
+
+        mockMvc.perform(MockMvcRequestBuilders.post(
+            "/treatments/sample")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(studyViewFilter)))
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].treatment").value("madeupanib"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].count").value("2"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].time").value("Pre"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].treatment").value("madeupanib"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].count").value("4"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].time").value("Post"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[2].treatment").value("fakeazil"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[2].count").value("4"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[2].time").value("Pre"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[3].treatment").value("fakeazil"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[3].count").value("2"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[3].time").value("Post"));
     }
 
     @Test
-    public void testFetchMetaTreatmentsByStudyIds() throws Exception {
+    public void getContainsTreatmentData() throws Exception {
+        List<String> studies = Arrays.asList("study_0", "study_1");
+        Mockito
+            .when(studyViewFilterApplier.apply(Mockito.any()))
+            .thenReturn(sampleIdentifiers);
 
-        TreatmentFilter studyFilter = new TreatmentFilter();
-        studyFilter.setStudyIds(Arrays.asList(STUDY_ID_1, STUDY_ID_2));
+        Mockito
+            .when(treatmentService.containsTreatmentData(Mockito.anyList()))
+            .thenReturn(true);
 
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/treatments/fetch")
-                .param("projection", "META")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(studyFilter)))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.header().string(HeaderKeyConstants.TOTAL_COUNT, String.valueOf(studyCount)) );
-
+        mockMvc.perform(MockMvcRequestBuilders.post("/treatments/display-patient")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(studies)))
+            .andExpect(MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.jsonPath("$").value("true"));
     }
 
-    @Test
-    public void testFetchMetaTreatmentsByTreatmentIds() throws Exception {
 
-        TreatmentFilter treatmentFilter = new TreatmentFilter();
-        treatmentFilter.setTreatmentIds(Arrays.asList(TREATMENT_ID_1, TREATMENT_ID_2));
-
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/treatments/fetch")
-                .param("projection", "META")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(treatmentFilter)))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.header().string(HeaderKeyConstants.TOTAL_COUNT, String.valueOf(treatmentCount)));
-
-    }
-
-    @Test
-    public void testFetchMetaTreatmentsNoParam() throws Exception {
-
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/treatments/fetch")
-                .param("projection", "META")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
-    }
-
-    @Test
-    public void testFetchTreatmentsByStudyIds() throws Exception {
-
-        TreatmentFilter studyFilter = new TreatmentFilter();
-        studyFilter.setStudyIds(Arrays.asList(STUDY_ID_1, STUDY_ID_2));
-
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/treatments/fetch")
-                .param("projection", "SUMMARY")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(studyFilter)))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.jsonPath("$", Matchers.hasSize( treatmentListForStudy.size() )))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].treatmentId").value(TREATMENT_ID_3));
-    }
-
-    @Test
-    public void testFetchTreatmentsByTreatmentIds() throws Exception {
-
-        TreatmentFilter treatmentFilter = new TreatmentFilter();
-        treatmentFilter.setTreatmentIds(Arrays.asList(TREATMENT_ID_1, TREATMENT_ID_2));
-
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/treatments/fetch")
-                .param("projection", "SUMMARY")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(treatmentFilter)))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.jsonPath("$", Matchers.hasSize( treatmentList.size() )))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].treatmentId").value(TREATMENT_ID_1));
-    }
-
-    @Test
-    public void testFetchTreatmentsNoParam() throws Exception {
-
-        mockMvc.perform(MockMvcRequestBuilders
-                .post("/treatments/fetch")
-                .param("projection", "SUMMARY")
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isBadRequest());
-    }
-
-    @Test
-    public void getTreatment() throws Exception {
-
-        Treatment treatment = createTreatmentList().get(0);
-        Mockito.when(treatmentService.getTreatment(Mockito.anyString())).thenReturn(treatment);
-
-        //test /treatments/{treatmentId}
-        mockMvc.perform(MockMvcRequestBuilders.get("/treatments/test_treatment_id")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.id").doesNotExist())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.treatmentId").value(TREATMENT_ID_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.name").value(TREATMENT_ID_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.description").value(DESCRIPTION_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.refLink").value(REF_LINK_1));
-    }
-
-    private List<Treatment> createTreatmentList() {
-
-        List<Treatment> treatmentList = new ArrayList<>();
-
-        Treatment treatment1 = new Treatment();
-        treatment1.setId(INTERNAL_ID_1);
-        treatment1.setStableId(TREATMENT_ID_1);
-        treatment1.setName(TREATMENT_ID_1);
-        treatment1.setDescription(DESCRIPTION_1);
-        treatment1.setRefLink(REF_LINK_1);
-        treatmentList.add(treatment1);
-
-        Treatment treatment2 = new Treatment();
-        treatment2.setId(INTERNAL_ID_2);
-        treatment2.setStableId(TREATMENT_ID_2);
-        treatment2.setName(TREATMENT_ID_2);
-        treatment2.setDescription(DESCRIPTION_2);
-        treatment2.setRefLink(REF_LINK_2);
-        treatmentList.add(treatment2);
-
-        return treatmentList;
-    }
-
-    private List<Treatment> createTreatmentListForStudy() {
-
-        List<Treatment> treatmentList = new ArrayList<>();
-
-        Treatment treatment3 = new Treatment();
-        treatment3.setId(INTERNAL_ID_3);
-        treatment3.setStableId(TREATMENT_ID_3);
-        treatment3.setName(TREATMENT_ID_3);
-        treatment3.setDescription(DESCRIPTION_3);
-        treatment3.setRefLink(REF_LINK_3);
-        treatmentList.add(treatment3);
-
-        return treatmentList;
-    }
 }

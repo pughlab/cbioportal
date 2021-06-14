@@ -36,7 +36,7 @@ import org.mskcc.cbio.portal.dao.*;
 import org.mskcc.cbio.portal.util.*;
 import org.mskcc.cbio.portal.model.*;
 import org.mskcc.cbio.portal.web_api.*;
-import org.apache.commons.lang.*;
+import org.apache.commons.lang3.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mskcc.cbio.portal.model.virtualstudy.VirtualStudy;
@@ -54,8 +54,10 @@ import java.util.stream.Collectors;
 
 import javax.servlet.*;
 import javax.servlet.http.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.rmi.RemoteException;
-import org.codehaus.jackson.map.ObjectMapper;
 
 
 /**

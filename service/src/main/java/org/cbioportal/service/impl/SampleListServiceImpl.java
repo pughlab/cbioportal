@@ -75,7 +75,7 @@ public class SampleListServiceImpl implements SampleListService {
         
         studyService.getStudy(studyId);
 
-        List<SampleList> sampleLists = sampleListRepository.getAllSampleListsInStudy(studyId, projection, pageSize, 
+        List<SampleList> sampleLists = sampleListRepository.getAllSampleListsInStudies(Arrays.asList(studyId), projection, pageSize, 
             pageNumber, sortBy, direction);
 
         if(projection.equals("DETAILED")) {
@@ -122,10 +122,23 @@ public class SampleListServiceImpl implements SampleListService {
 
     private void addSampleIds(List<SampleList> sampleLists) {
 
-        List<SampleListToSampleId> sampleListToSampleIds = sampleListRepository.getSampleListSampleIds(sampleLists
-        .stream().map(SampleList::getListId).collect(Collectors.toList()));
+        for(SampleList sampleList : sampleLists) {
+            sampleList.setSampleIds(sampleListRepository.getSampleListSampleIds(Arrays.asList(sampleList.getListId()))
+                .stream().map(SampleListToSampleId::getSampleId).collect(Collectors.toList()));
+        }
+    }
 
-        sampleLists.forEach(s -> s.setSampleIds(sampleListToSampleIds.stream().filter(p -> p.getSampleListId()
-        .equals(s.getListId())).map(SampleListToSampleId::getSampleId).collect(Collectors.toList())));
+    @Override
+    public List<SampleList> getAllSampleListsInStudies(List<String> studyIds, String projection) {
+
+        List<SampleList> sampleLists = sampleListRepository.getAllSampleListsInStudies(studyIds, projection, null, null,
+                null, null);
+
+        if (projection.equals("DETAILED")) {
+            addSampleIds(sampleLists);
+            addSampleCounts(sampleLists);
+        }
+
+        return sampleLists;
     }
 }

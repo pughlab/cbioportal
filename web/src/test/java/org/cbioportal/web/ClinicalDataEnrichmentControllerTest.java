@@ -10,6 +10,7 @@ import org.cbioportal.model.ClinicalDataEnrichment;
 import org.cbioportal.model.Sample;
 import org.cbioportal.service.ClinicalAttributeService;
 import org.cbioportal.service.SampleService;
+import org.cbioportal.service.util.ClinicalAttributeUtil;
 import org.cbioportal.web.parameter.Group;
 import org.cbioportal.web.parameter.GroupFilter;
 import org.cbioportal.web.parameter.SampleIdentifier;
@@ -57,6 +58,11 @@ public class ClinicalDataEnrichmentControllerTest {
     public static final String CLINICAL_ATTRIBUTE_ID_2 = "attribute_id2";
     public static final String CLINICAL_ATTRIBUTE_ID_3 = "attribute_id3";
     public static final String CLINICAL_ATTRIBUTE_ID_4 = "attribute_id4";
+
+    @Bean
+    public ClinicalAttributeUtil clinicalAttributeUtil() {
+        return new ClinicalAttributeUtil();
+    }
 
     @Autowired
     private WebApplicationContext wac;
@@ -164,7 +170,7 @@ public class ClinicalDataEnrichmentControllerTest {
                 MockMvcRequestBuilders.post("/clinical-data-enrichments/fetch").accept(MediaType.APPLICATION_JSON)
                         .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(groupFilter)))
                 .andExpect(MockMvcResultMatchers.status().isBadRequest()).andExpect(MockMvcResultMatchers
-                        .jsonPath("$.message").value("groups size must be between 2 and 2147483647"));
+                        .jsonPath("$.message").value("interceptedGroupFilter size must be between 2 and 2147483647"));
 
         Group group1 = new Group();
         group1.setName("1");
@@ -197,7 +203,7 @@ public class ClinicalDataEnrichmentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(groupFilter)))
                 .andExpect(MockMvcResultMatchers.status().isBadRequest())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.message")
-                        .value("groups[1].sampleIdentifiers size must be between 1 and 10000000"));
+                        .value("interceptedGroupFilter size must be between 1 and 10000000"));
 
         group2.setSampleIdentifiers(new ArrayList<SampleIdentifier>(
                 Arrays.asList(sampleIdentifier3, sampleIdentifier4, sampleIdentifier5)));
@@ -209,7 +215,7 @@ public class ClinicalDataEnrichmentControllerTest {
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$", Matchers.hasSize(0)));
 
-        Mockito.when(sampleService.fetchSamples(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class),
+        Mockito.when(sampleService.fetchSamples(Mockito.anyList(), Mockito.anyList(),
                 Mockito.anyString())).thenReturn(Arrays.asList(sample1, sample2, sample3, sample4, sample5));
 
         List<ClinicalAttribute> attributes = Arrays.asList(attribute1, attribute3);

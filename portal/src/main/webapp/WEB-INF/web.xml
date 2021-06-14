@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <web-app version="3.0" xmlns="http://java.sun.com/xml/ns/javaee"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:mvc="http://www.springframework.org/schema/mvc"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
 
     <!-- general settings -->
 
@@ -23,16 +24,16 @@
     <!-- dbcp profile is defined here to prevent exceptions during war deployment -->
     <context-param>
         <param-name>spring.profiles.active</param-name>
-        <param-value>${dbconnector:dbcp},${authenticate},${google.analytics.tracking:ga-api-tracking-disabled}</param-value>
+        <param-value>${dbconnector:dbcp},${authenticate},${google.analytics.tracking:ga-api-tracking-disabled},${persistence.cache_type}</param-value>
     </context-param>
     <context-param>
         <param-name>spring.liveBeansView.mbeanDomain</param-name>
         <param-value>${dbconnector:dbcp},${authenticate}</param-value>
     </context-param>
-
+    
     <context-param>
         <param-name>contextConfigLocation</param-name>
-        <param-value>classpath:applicationContext-business.xml classpath:applicationContext-security.xml classpath:applicationContext-core.xml classpath:applicationContext-logging.xml classpath:applicationContext-ehcache.xml</param-value>
+        <param-value>classpath:applicationContext-persistenceConnections.xml classpath:applicationContext-security.xml classpath:applicationContext-logging.xml classpath:applicationContext-ehcache.xml classpath:applicationContext-rediscache.xml</param-value>
     </context-param>
 
     <context-param>
@@ -55,12 +56,29 @@
             org.apache.commons.fileupload.servlet.FileCleanerCleanup
         </listener-class>
     </listener>
-    <!-- custom location for log4j config -->
+    <!-- App custom context listener -->
     <listener>
-      <listener-class>org.springframework.web.util.Log4jConfigListener</listener-class>
+        <listener-class>
+            org.cbioportal.web.config.WebServletContextListener
+        </listener-class>
     </listener>
 
     <!-- filters -->
+    
+    <!--
+        This filter is a bit misleading. This is actually an org.mskcc.cbio.portal.util.RequestBodyGZipFilter,
+        not an org.springframework.web.filter.DelegatingFilterProxy. We declare this as DelegatingFilterProxy
+        so that it has access to the application context, which it needs to see if this feature is enabled.
+    -->
+    <filter>
+        <filter-name>requestBodyGZipFilter</filter-name>
+        <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>requestBodyGZipFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    
     <filter>
         <filter-name>CorsFilter</filter-name>
         <filter-class>org.apache.catalina.filters.CorsFilter</filter-class>
@@ -74,7 +92,7 @@
         </init-param>
         <init-param>
             <param-name>cors.allowed.headers</param-name>
-            <param-value>Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers</param-value>
+            <param-value>Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers,Content-Encoding</param-value>
         </init-param>
         <!-- expose cors headers defined in HeaderKeyConstants.java -->
         <init-param>
@@ -187,7 +205,6 @@
     <filter-mapping>
         <filter-name>ResettableHttpServletRequestFilter</filter-name>
         <url-pattern>/api/*</url-pattern>
-        <url-pattern>/api-legacy/*</url-pattern>
     </filter-mapping>
 
     <!-- make sure XssFilter runs last, so that any new parameters added
@@ -209,22 +226,15 @@
     </filter-mapping>
 
 
-    <!-- servlet definitions & mappings -->
-
-    <servlet>
-        <servlet-name>api-legacy</servlet-name>
-        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
-        <init-param>
-            <param-name>contextConfigLocation</param-name>
-            <param-value>classpath:applicationContext-weblegacy.xml</param-value>
-        </init-param>
-        <load-on-startup>1</load-on-startup>
-    </servlet>
+    <!-- servlet definitions & mappings -->    
     <servlet-mapping>
-        <servlet-name>api-legacy</servlet-name>
-        <url-pattern>/api-legacy/*</url-pattern>
+        <servlet-name>default</servlet-name>
+        <url-pattern>/js/*</url-pattern>
+        <url-pattern>/reactapp/*</url-pattern>
+        <url-pattern>/images/*</url-pattern>
+        <url-pattern>/css/*</url-pattern>
     </servlet-mapping>
-
+    
     <servlet>
         <servlet-name>url_shortener</servlet-name>
         <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
@@ -309,16 +319,6 @@
 		<url-pattern>/portalMetadata.json</url-pattern>
 	</servlet-mapping>
 
-    <!-- need to keep this for legacy network page -->
-    <servlet>
-        <servlet-name>network</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.NetworkServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>network</servlet-name>
-        <url-pattern>/network.do</url-pattern>
-    </servlet-mapping>
-
 	<servlet>
 		<servlet-name>network_sbgn</servlet-name>
 		<servlet-class>org.mskcc.cbio.portal.servlet.NetworkSbgnServlet</servlet-class>
@@ -381,15 +381,6 @@
 		<servlet-name>mutation_aligner_json</servlet-name>
 		<url-pattern>/getMutationAligner.json</url-pattern>
 	</servlet-mapping>
-
-	<servlet>
-		<servlet-name>mutation_data_json</servlet-name>
-		<servlet-class>org.mskcc.cbio.portal.servlet.MutationDataServlet</servlet-class>
-	</servlet>
-    <servlet-mapping>
-        <servlet-name>mutation_data_json</servlet-name>
-        <url-pattern>/getMutationData.json</url-pattern>
-    </servlet-mapping>
 
     <servlet>
         <servlet-name>oncoprint_converter</servlet-name>
@@ -478,30 +469,12 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>CrossCancerMutationJSON</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.CrossCancerMutationDataServlet</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>CrossCancerMutationJSON</servlet-name>
-        <url-pattern>/crosscancermutation.json</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
         <servlet-name>CheckDarwinAccessServlet</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.CheckDarwinAccessServlet</servlet-class>
     </servlet>
     <servlet-mapping>
         <servlet-name>CheckDarwinAccessServlet</servlet-name>
         <url-pattern>/checkDarwinAccess.do</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
-        <servlet-name>MutationsJSON</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.MutationsJSON</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>MutationsJSON</servlet-name>
-        <url-pattern>/mutations.json</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -538,24 +511,6 @@
     <servlet-mapping>
         <servlet-name>DrugsJSON</servlet-name>
         <url-pattern>/drugs.json</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
-        <servlet-name>GetGeneticProfileJSON</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.GetGeneticProfilesJSON</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>GetGeneticProfileJSON</servlet-name>
-        <url-pattern>/getGeneticProfile.json</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
-        <servlet-name>GetProfileDataJSON</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.GetProfileDataJSON</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>GetProfileDataJSON</servlet-name>
-        <url-pattern>/getProfileData.json</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -604,15 +559,6 @@
     </servlet-mapping>
 
     <servlet>
-        <servlet-name>getAlterationData</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.GetAlterationDataJSON</servlet-class>
-    </servlet>
-    <servlet-mapping>
-        <servlet-name>getAlterationData</servlet-name>
-        <url-pattern>/getAlterationData.json</url-pattern>
-    </servlet-mapping>
-
-    <servlet>
         <servlet-name>calcCoExp</servlet-name>
         <servlet-class>org.mskcc.cbio.portal.servlet.CalcCoExp</servlet-class>
     </servlet>
@@ -630,13 +576,63 @@
         <url-pattern>/calcFisherExact.do</url-pattern>
     </servlet-mapping>
 
+    <!--All the JSPs need specific routes-->
+    <!--To stop them from being directed to the SPA jsp instead-->
     <servlet>
-        <servlet-name>overRepresentationAnalysisJSON</servlet-name>
-        <servlet-class>org.mskcc.cbio.portal.servlet.EnrichmentsJSON</servlet-class>
+        <servlet-name>LoginJSP</servlet-name>
+        <jsp-file>/login.jsp</jsp-file>
     </servlet>
     <servlet-mapping>
-        <servlet-name>overRepresentationAnalysisJSON</servlet-name>
-        <url-pattern>/oranalysis.do</url-pattern>
+        <servlet-name>LoginJSP</servlet-name>
+        <url-pattern>/login.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>NetworksJSP</servlet-name>
+        <jsp-file>/networks.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>NetworksJSP</servlet-name>
+        <url-pattern>/networks.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>ReleaseNotesMutationMapperJSP</servlet-name>
+        <jsp-file>/release_notes_mutation_mapper.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ReleaseNotesMutationMapperJSP</servlet-name>
+        <url-pattern>/release_notes_mutation_mapper.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>ReleaseNotesOncoprinterJSP</servlet-name>
+        <jsp-file>/release_notes_oncoprinter.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>ReleaseNotesOncoprinterJSP</servlet-name>
+        <url-pattern>/release_notes_oncoprinter.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>RestfulLoginJSP</servlet-name>
+        <jsp-file>/restful_login.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>RestfulLoginJSP</servlet-name>
+        <url-pattern>/restful_login.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>SciSignalReprintJSP</servlet-name>
+        <jsp-file>/sci_signal_reprint.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>SciSignalReprintJSP</servlet-name>
+        <url-pattern>/sci_signal_reprint.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>TrackingIncludeJSP</servlet-name>
+        <jsp-file>/tracking_include.jsp</jsp-file>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TrackingIncludeJSP</servlet-name>
+        <url-pattern>/tracking_include.jsp</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -655,6 +651,8 @@
         <url-pattern>/study.do/*</url-pattern>
         <url-pattern>/loading/*</url-pattern>
         <url-pattern>/comparison/*</url-pattern>
+        <url-pattern>/restore</url-pattern>
+        <url-pattern>/</url-pattern>
     </servlet-mapping>
 
     <servlet>
@@ -693,10 +691,10 @@
         <servlet-name>SiteConfiguration</servlet-name>
         <url-pattern>/config_service.json</url-pattern>
     </servlet-mapping>
-
+    
     <error-page>
-        <error-code>404</error-code>
-        <location>/index.jsp</location>
+        <exception-type>org.springframework.security.web.firewall.RequestRejectedException</exception-type>
+        <location>/error.html</location>
     </error-page>
 
 </web-app>

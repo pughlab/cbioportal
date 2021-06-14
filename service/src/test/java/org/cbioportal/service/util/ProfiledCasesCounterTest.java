@@ -16,7 +16,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ProfiledCasesCounterTest {
@@ -27,6 +27,7 @@ public class ProfiledCasesCounterTest {
     private static final Integer ENTREZ_GENE_ID_1 = 1;
     private static final Integer ENTREZ_GENE_ID_2 = 2;
     private static final Integer ENTREZ_GENE_ID_3 = 3;
+    private static final Integer ENTREZ_GENE_ID_4 = 4;
     private static final String SAMPLE_ID_1 = "sample_id_1";
     private static final String SAMPLE_ID_2 = "sample_id_2";
     private static final String SAMPLE_ID_3 = "sample_id_3";
@@ -63,10 +64,6 @@ public class ProfiledCasesCounterTest {
         genePanelData3.setPatientId(PATIENT_ID_2);
         genePanelDataList.add(genePanelData3);
 
-        Mockito.when(genePanelService.fetchGenePanelDataInMultipleMolecularProfiles(
-                Arrays.asList(MOLECULAR_PROFILE_ID, MOLECULAR_PROFILE_ID, MOLECULAR_PROFILE_ID),
-                Arrays.asList(SAMPLE_ID_1, SAMPLE_ID_2, SAMPLE_ID_3))).thenReturn(genePanelDataList);
-
         List<GenePanel> genePanels = new ArrayList<>();
         GenePanel genePanel1 = new GenePanel();
         genePanel1.setStableId(GENE_PANEL_ID_1);
@@ -85,6 +82,9 @@ public class ProfiledCasesCounterTest {
         GenePanelToGene genePanelToGene3 = new GenePanelToGene();
         genePanelToGene3.setEntrezGeneId(ENTREZ_GENE_ID_1);
         genes2.add(genePanelToGene3);
+        GenePanelToGene genePanelToGene4 = new GenePanelToGene();
+        genePanelToGene4.setEntrezGeneId(ENTREZ_GENE_ID_4);
+        genes2.add(genePanelToGene4);
         genePanel2.setGenes(genes2);
         genePanels.add(genePanel2);
 
@@ -102,22 +102,27 @@ public class ProfiledCasesCounterTest {
         alterationCount3.setEntrezGeneId(ENTREZ_GENE_ID_3);
         alterationCounts.add(alterationCount3);
 
-        profiledSamplesCounter.calculate(
-                Arrays.asList(MOLECULAR_PROFILE_ID, MOLECULAR_PROFILE_ID, MOLECULAR_PROFILE_ID),
-                Arrays.asList(SAMPLE_ID_1, SAMPLE_ID_2, SAMPLE_ID_3), alterationCounts, false);
+        profiledSamplesCounter.calculate(alterationCounts, genePanelDataList, false, profiledSamplesCounter.sampleUniqueIdentifier);
 
-        Assert.assertEquals(new Integer(3), alterationCounts.get(0).getNumberOfProfiledCases());
-        Assert.assertEquals(new Integer(2), alterationCounts.get(1).getNumberOfProfiledCases());
-        Assert.assertEquals(new Integer(3), alterationCounts.get(2).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(3), alterationCounts.get(0).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(1).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(3), alterationCounts.get(2).getNumberOfProfiledCases());
         
         
-        profiledSamplesCounter.calculate(
-                Arrays.asList(MOLECULAR_PROFILE_ID, MOLECULAR_PROFILE_ID, MOLECULAR_PROFILE_ID),
-                Arrays.asList(SAMPLE_ID_1, SAMPLE_ID_2, SAMPLE_ID_3), alterationCounts, true);
+        profiledSamplesCounter.calculate(alterationCounts, genePanelDataList, false, profiledSamplesCounter.patientUniqueIdentifier);
+        
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(0).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(1).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(2).getNumberOfProfiledCases());
 
-        Assert.assertEquals(new Integer(2), alterationCounts.get(0).getNumberOfProfiledCases());
-        Assert.assertEquals(new Integer(2), alterationCounts.get(1).getNumberOfProfiledCases());
-        Assert.assertEquals(new Integer(2), alterationCounts.get(2).getNumberOfProfiledCases());
+        profiledSamplesCounter.calculate(alterationCounts, genePanelDataList, true, profiledSamplesCounter.patientUniqueIdentifier);
+
+        Assert.assertEquals(4, alterationCounts.size());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(0).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(1).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(2).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(2), alterationCounts.get(3).getNumberOfProfiledCases());
+        Assert.assertEquals(Integer.valueOf(4), alterationCounts.get(3).getEntrezGeneId());
 
     }
 }

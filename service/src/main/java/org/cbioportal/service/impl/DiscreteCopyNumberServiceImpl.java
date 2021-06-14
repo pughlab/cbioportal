@@ -3,13 +3,16 @@ package org.cbioportal.service.impl;
 import org.cbioportal.model.*;
 import org.cbioportal.model.meta.BaseMeta;
 import org.cbioportal.persistence.DiscreteCopyNumberRepository;
-import org.cbioportal.service.*;
+import org.cbioportal.service.DiscreteCopyNumberService;
+import org.cbioportal.service.MolecularDataService;
+import org.cbioportal.service.MolecularProfileService;
 import org.cbioportal.service.exception.MolecularProfileNotFoundException;
-import org.cbioportal.service.util.AlterationEnrichmentUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,8 +24,6 @@ public class DiscreteCopyNumberServiceImpl implements DiscreteCopyNumberService 
     private MolecularDataService molecularDataService;
     @Autowired
     private MolecularProfileService molecularProfileService;
-    @Autowired
-    private AlterationEnrichmentUtil alterationEnrichmentUtil;
 
     @Override
     public List<DiscreteCopyNumberData> getDiscreteCopyNumbersInMolecularProfileBySampleListId(
@@ -92,8 +93,21 @@ public class DiscreteCopyNumberServiceImpl implements DiscreteCopyNumberService 
                                                                                           List<Integer> alterationTypes, 
                                                                                           String projection) {
         
-        return discreteCopyNumberRepository.getDiscreteCopyNumbersInMultipleMolecularProfiles(molecularProfileIds, 
-            sampleIds, entrezGeneIds, alterationTypes, projection);
+        if (isHomdelOrAmpOnly(alterationTypes)) {
+            return discreteCopyNumberRepository.getDiscreteCopyNumbersInMultipleMolecularProfiles(molecularProfileIds,
+                sampleIds, entrezGeneIds, alterationTypes, projection);
+        }
+        
+        return molecularDataService.getMolecularDataInMultipleMolecularProfiles(
+                molecularProfileIds,
+                sampleIds,
+                entrezGeneIds,
+                projection)
+            .stream()
+            .filter(g -> isValidAlteration(alterationTypes, g))
+            .map(this::convert)
+            .collect(Collectors.toList());
+        
 	}
 
     @Override
@@ -129,47 +143,6 @@ public class DiscreteCopyNumberServiceImpl implements DiscreteCopyNumberService 
         
         return discreteCopyNumberRepository
             .getSampleCountByGeneAndAlterationAndSampleIds(molecularProfileId, sampleIds, entrezGeneIds, alterations);
-    }
-
-    @Override
-	public List<CopyNumberCountByGene> getSampleCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
-			List<String> sampleIds, List<Integer> entrezGeneIds, List<Integer> alterations, boolean includeFrequency) {
-
-        List<CopyNumberCountByGene> alterationCountByGenes;
-        if (molecularProfileIds.isEmpty()) {
-            alterationCountByGenes = Collections.emptyList();
-        } else {
-            alterationCountByGenes = discreteCopyNumberRepository.getSampleCountInMultipleMolecularProfiles(molecularProfileIds, 
-                sampleIds, entrezGeneIds, alterations);
-            
-            if (includeFrequency) {
-                alterationEnrichmentUtil.includeFrequencyForSamples(molecularProfileIds, sampleIds, alterationCountByGenes);
-            }
-        }
-
-        return alterationCountByGenes;
-	}
-
-    @Override
-    public List<CopyNumberCountByGene> getPatientCountInMultipleMolecularProfiles(List<String> molecularProfileIds,
-                                                                                       List<String> patientIds, 
-                                                                                       List<Integer> entrezGeneIds, 
-                                                                                       List<Integer> alterations,
-                                                                                       boolean includeFrequency) {
-
-        List<CopyNumberCountByGene> alterationCountByGenes;
-        if (molecularProfileIds.isEmpty()) {
-            alterationCountByGenes = Collections.emptyList();
-        } else {
-            alterationCountByGenes = discreteCopyNumberRepository.getPatientCountInMultipleMolecularProfiles(molecularProfileIds, 
-                    patientIds, entrezGeneIds, alterations);
-            
-            if (includeFrequency) {
-                alterationEnrichmentUtil.includeFrequencyForPatients(molecularProfileIds, patientIds, alterationCountByGenes);
-            }
-        }
-
-        return alterationCountByGenes;
     }
 
     @Override
@@ -211,6 +184,8 @@ public class DiscreteCopyNumberServiceImpl implements DiscreteCopyNumberService 
 
         DiscreteCopyNumberData discreteCopyNumberData = new DiscreteCopyNumberData();
         discreteCopyNumberData.setMolecularProfileId(molecularData.getMolecularProfileId());
+        discreteCopyNumberData.setStudyId(molecularData.getStudyId());
+        discreteCopyNumberData.setPatientId(molecularData.getPatientId());
         discreteCopyNumberData.setSampleId(molecularData.getSampleId());
         discreteCopyNumberData.setEntrezGeneId(molecularData.getEntrezGeneId());
         discreteCopyNumberData.setGene(molecularData.getGene());

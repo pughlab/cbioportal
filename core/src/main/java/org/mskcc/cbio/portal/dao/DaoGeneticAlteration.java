@@ -32,7 +32,6 @@
 
 package org.mskcc.cbio.portal.dao;
 
-import org.codehaus.jackson.node.ObjectNode;
 import org.mskcc.cbio.portal.model.CanonicalGene;
 
 import java.sql.Connection;
@@ -42,7 +41,9 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.StringUtils;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Data Access Object for the Genetic Alteration Table.

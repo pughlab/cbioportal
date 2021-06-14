@@ -1,6 +1,8 @@
 sudo: required
 language: java
-jdk: openjdk8
+jdk:
+- openjdk8
+- openjdk11
 services:
 - docker
 - mysql
@@ -38,7 +40,7 @@ script:
 - |
   if [[ "${TEST}" == python-validator ]]
   then
-      docker run -v ${PWD}:/cbioportal python:3.4 /bin/sh -c '
+      docker run -v ${PWD}:/cbioportal python:3.6 /bin/sh -c '
         cd /cbioportal &&
         pip install -r requirements.txt &&
         export PYTHONPATH=/cbioportal/core/src/main/scripts &&
@@ -62,19 +64,17 @@ script:
   if [[ "${TEST}" == core ]]
   then
       ~/maven/$MAVEN_VERSION/bin/mvn \
+          -q \
           -e \
           -U \
           -Ppublic \
-          -Dauthenticate=false \
           -Dfinal.war.name=cbioportal \
-          -Ddb.test.username=cbio_user \
-          -Ddb.test.password=somepassword \
           clean \
           install \
           integration-test
   fi
 - |
-  if [[ "${TEST}" == end-to-end ]]
+  if [[ "${TEST}" == end-to-end  ]]
   then
       ~/maven/$MAVEN_VERSION/bin/mvn \
           -q \

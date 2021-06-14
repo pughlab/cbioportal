@@ -2,7 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="org.cbioportal.persistence.mybatis.MutationMapper">
-    
 
     <sql id="select">
         genetic_profile.STABLE_ID AS molecularProfileId,
@@ -38,15 +37,20 @@
             mutation_event.ONCOTATOR_PROTEIN_POS_START AS oncotatorProteinPosStart,
             mutation_event.ONCOTATOR_PROTEIN_POS_END AS oncotatorProteinPosEnd,
             mutation_event.KEYWORD AS keyword,
-            mutation.DRIVER_FILTER as driverFilter,
-            mutation.DRIVER_FILTER_ANNOTATION as driverFilterAnnotation,
-            mutation.DRIVER_TIERS_FILTER as driverTiersFilter,
-            mutation.DRIVER_TIERS_FILTER_ANNOTATION as driverTiersFilterAnnotation
+            mutation.ANNOTATION_JSON as annotationJSON,
+            alteration_driver_annotation.DRIVER_FILTER as driverFilter,
+            alteration_driver_annotation.DRIVER_FILTER_ANNOTATION as driverFilterAnnotation,
+            alteration_driver_annotation.DRIVER_TIERS_FILTER as driverTiersFilter,
+            alteration_driver_annotation.DRIVER_TIERS_FILTER_ANNOTATION as driverTiersFilterAnnotation
         </if>
         <if test="projection == 'DETAILED'">
             ,
             <include refid="org.cbioportal.persistence.mybatis.GeneMapper.select">
                 <property name="prefix" value="gene."/>
+            </include>
+            ,
+            <include refid="getAlleleSpecificCopyNumber">
+                <property name="prefix" value="alleleSpecificCopyNumber."/>
             </include>
         </if>
     </sql>
@@ -57,6 +61,10 @@
         INNER JOIN sample ON mutation.SAMPLE_ID = sample.INTERNAL_ID
         INNER JOIN patient ON sample.PATIENT_ID = patient.INTERNAL_ID
         INNER JOIN cancer_study ON patient.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+        LEFT JOIN alteration_driver_annotation ON
+                mutation.GENETIC_PROFILE_ID = alteration_driver_annotation.GENETIC_PROFILE_ID
+            and mutation.SAMPLE_ID = alteration_driver_annotation.SAMPLE_ID
+            and mutation.MUTATION_EVENT_ID = alteration_driver_annotation.ALTERATION_EVENT_ID
     </sql>
 
     <sql id="where">
@@ -75,7 +83,7 @@
                 </foreach>
             </if>
             <if test="snpOnly != null and snpOnly == true">
-                AND mutation_event.REFERENCE_ALLELE IN ('A','T','C','G') 
+                AND mutation_event.REFERENCE_ALLELE IN ('A','T','C','G')
                 AND mutation_event.TUMOR_SEQ_ALLELE IN ('A','T','C','G')
             </if>
         </where>
@@ -103,7 +111,7 @@
             </if>
         </where>
     </sql>
-    
+
     <sql id="whereInMultipleMolecularProfiles">
         <where>
             <if test="sampleIds != null and !sampleIds.isEmpty()">
@@ -111,7 +119,7 @@
                 SELECT sample.INTERNAL_ID from sample
                 INNER JOIN patient ON sample.PATIENT_ID = patient.INTERNAL_ID
                 INNER JOIN genetic_profile ON patient.CANCER_STUDY_ID = genetic_profile.CANCER_STUDY_ID
-                WHERE 
+                WHERE
                 <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() == 1">
                     genetic_profile.STABLE_ID = #{molecularProfileIds[0]} AND
                     sample.STABLE_ID IN
@@ -129,10 +137,10 @@
                         #{item}
                     </foreach>
                 </if>
-                AND sample.INTERNAL_ID = mutation.SAMPLE_ID 
-                AND genetic_profile.GENETIC_PROFILE_ID = mutation.GENETIC_PROFILE_ID)
+                AND sample.INTERNAL_ID = mutation.SAMPLE_ID
+                )
             </if>
-            <if test="sampleIds == null">
+            <if test="sampleIds == null || sampleIds.isEmpty()">
                 genetic_profile.STABLE_ID IN
                 <foreach item="item" collection="molecularProfileIds" open="(" separator="," close=")">
                     #{item}
@@ -151,15 +159,32 @@
         </where>
     </sql>
 
+    <sql id="getAlleleSpecificCopyNumber">
+        allele_specific_copy_number.ASCN_INTEGER_COPY_NUMBER AS "${prefix}ascnIntegerCopyNumber",
+        allele_specific_copy_number.ASCN_METHOD AS "${prefix}ascnMethod",
+        allele_specific_copy_number.CCF_EXPECTED_COPIES_UPPER AS "${prefix}ccfExpectedCopiesUpper",
+        allele_specific_copy_number.CCF_EXPECTED_COPIES AS "${prefix}ccfExpectedCopies",
+        allele_specific_copy_number.CLONAL AS "${prefix}clonal",
+        allele_specific_copy_number.MINOR_COPY_NUMBER AS "${prefix}minorCopyNumber",
+        allele_specific_copy_number.EXPECTED_ALT_COPIES AS "${prefix}expectedAltCopies",
+        allele_specific_copy_number.TOTAL_COPY_NUMBER AS "${prefix}totalCopyNumber"
+    </sql>
+
+    <sql id="includeAlleleSpecificCopyNumber">
+        LEFT JOIN allele_specific_copy_number ON mutation.MUTATION_EVENT_ID = allele_specific_copy_number.MUTATION_EVENT_ID
+        AND mutation.GENETIC_PROFILE_ID = allele_specific_copy_number.GENETIC_PROFILE_ID
+        AND mutation.SAMPLE_ID = allele_specific_copy_number.SAMPLE_ID
+    </sql>
+
     <select id="getMutationsBySampleListId" resultType="org.cbioportal.model.Mutation">
         SELECT
         <include refid="select"/>
         <include refid="from"/>
-        <if test="projection == 'SUMMARY' || projection == 'DETAILED'">
-            INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID
-        </if>
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         <if test="projection == 'DETAILED'">
             INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
+            <include refid="includeAlleleSpecificCopyNumber"/>
         </if>
         <include refid="whereBySampleListId"/>
         <if test="sortBy != null and projection != 'ID'">
@@ -178,18 +203,24 @@
         COUNT(*) AS totalCount,
         COUNT(DISTINCT(mutation.SAMPLE_ID)) AS sampleCount
         <include refid="from"/>
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         <include refid="whereBySampleListId"/>
     </select>
-    
+
     <select id="getMutationsInMultipleMolecularProfiles" resultType="org.cbioportal.model.Mutation">
         SELECT
         <include refid="select"/>
         <include refid="from"/>
-        <if test="projection == 'SUMMARY' || projection == 'DETAILED'">
+        <!-- Revert back to this once fusions are removed from mutation table -->
+        <!-- <if test="projection == 'SUMMARY' || projection == 'DETAILED'">
             INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID
-        </if>
+        </if> -->
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         <if test="projection == 'DETAILED'">
             INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
+            <include refid="includeAlleleSpecificCopyNumber"/>
         </if>
         <include refid="whereInMultipleMolecularProfiles"/>
         <if test="sortBy != null and projection != 'ID'">
@@ -202,12 +233,37 @@
             LIMIT #{limit} OFFSET #{offset}
         </if>
     </select>
+    
+    <!-- TODO: Remove once fusions are removed from mutation table -->
+    <select id="getFusionsInMultipleMolecularProfiles" resultType="org.cbioportal.model.Mutation">
+        SELECT
+        <include refid="select"/>
+        <include refid="from"/>
+        INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE = 'Fusion'
+        <if test="projection == 'DETAILED'">
+            INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
+            <include refid="includeAlleleSpecificCopyNumber"/>
+        </if>
+        <include refid="whereInMultipleMolecularProfiles"/>
+        <if test="sortBy != null and projection != 'ID'">
+            ORDER BY ${sortBy} ${direction}
+        </if>
+        <if test="projection == 'ID'">
+            ORDER BY genetic_profile.STABLE_ID ASC, sample.STABLE_ID ASC, mutation.ENTREZ_GENE_ID ASC
+        </if>
+        <if test="limit != null and limit != 0">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+    <!-- TODO: Remove once fusions are removed from mutation table -->
 
     <select id="getMetaMutationsInMultipleMolecularProfiles" resultType="org.cbioportal.model.meta.MutationMeta">
         SELECT
         COUNT(*) AS totalCount,
         COUNT(DISTINCT(mutation.SAMPLE_ID)) AS sampleCount
         <include refid="from"/>
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         <include refid="whereInMultipleMolecularProfiles"/>
     </select>
 
@@ -215,11 +271,15 @@
         SELECT
         <include refid="select"/>
         <include refid="from"/>
-        <if test="projection == 'SUMMARY' || projection == 'DETAILED'">
+        <!-- Revert back to this once fusions are removed from mutation table -->
+        <!-- <if test="projection == 'SUMMARY' || projection == 'DETAILED'">
             INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID
-        </if>
+        </if> -->
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         <if test="projection == 'DETAILED'">
             INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
+            <include refid="includeAlleleSpecificCopyNumber"/>
         </if>
         <include refid="where"/>
         <if test="sortBy != null and projection != 'ID'">
@@ -238,6 +298,8 @@
         COUNT(*) AS totalCount,
         COUNT(DISTINCT(mutation.SAMPLE_ID)) AS sampleCount
         <include refid="from"/>
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation_event.MUTATION_EVENT_ID = mutation.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         <include refid="where"/>
     </select>
 
@@ -248,6 +310,8 @@
         COUNT(*) AS totalCount,
         COUNT(DISTINCT(mutation.SAMPLE_ID)) AS numberOfAlteredCases
         FROM mutation
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        INNER JOIN mutation_event ON mutation_event.MUTATION_EVENT_ID = mutation.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
         INNER JOIN genetic_profile ON mutation.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
         INNER JOIN sample ON mutation.SAMPLE_ID = sample.INTERNAL_ID
         INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
@@ -255,86 +319,6 @@
         GROUP BY mutation.ENTREZ_GENE_ID
     </select>
 
-    <select id="getSampleCountInMultipleMolecularProfiles" resultType="org.cbioportal.model.MutationCountByGene">
-        SELECT
-        mutation.ENTREZ_GENE_ID AS entrezGeneId,
-        gene.HUGO_GENE_SYMBOL AS hugoGeneSymbol,
-        COUNT(*) AS totalCount,
-        COUNT(DISTINCT(mutation.SAMPLE_ID)) AS numberOfAlteredCases
-        FROM mutation
-        INNER JOIN mutation_event ON mutation_event.MUTATION_EVENT_ID = mutation.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE != 'Fusion'
-        INNER JOIN genetic_profile ON mutation.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
-        INNER JOIN sample ON mutation.SAMPLE_ID = sample.INTERNAL_ID
-        INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
-        <include refid="whereInMultipleMolecularProfiles"/>
-        GROUP BY mutation.ENTREZ_GENE_ID
-    </select>
-
-    <select id="getSampleCountInMultipleMolecularProfilesForFusions" resultType="org.cbioportal.model.MutationCountByGene">
-        SELECT
-        mutation.ENTREZ_GENE_ID AS entrezGeneId,
-        gene.HUGO_GENE_SYMBOL AS hugoGeneSymbol,
-        COUNT(*) AS totalCount,
-        COUNT(DISTINCT(mutation.SAMPLE_ID)) AS numberOfAlteredCases
-        FROM mutation
-        INNER JOIN mutation_event ON mutation_event.MUTATION_EVENT_ID = mutation.MUTATION_EVENT_ID AND mutation_event.MUTATION_TYPE = 'Fusion'
-        INNER JOIN genetic_profile ON mutation.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
-        INNER JOIN sample ON mutation.SAMPLE_ID = sample.INTERNAL_ID
-        INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
-        <include refid="whereInMultipleMolecularProfiles"/>
-        GROUP BY mutation.ENTREZ_GENE_ID
-    </select>
-
-    <select id="getPatientCountInMultipleMolecularProfiles" resultType="org.cbioportal.model.MutationCountByGene">
-        SELECT
-        mutation.ENTREZ_GENE_ID AS entrezGeneId,
-        gene.HUGO_GENE_SYMBOL AS hugoGeneSymbol,
-        COUNT(*) AS totalCount,
-        COUNT(DISTINCT(patient.INTERNAL_ID)) AS numberOfAlteredCases
-        FROM mutation
-        INNER JOIN genetic_profile ON mutation.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
-        INNER JOIN sample ON mutation.SAMPLE_ID = sample.INTERNAL_ID
-        INNER JOIN patient ON sample.PATIENT_ID = patient.INTERNAL_ID
-        INNER JOIN gene ON mutation.ENTREZ_GENE_ID = gene.ENTREZ_GENE_ID
-        WHERE
-        <if test="patientIds != null and !patientIds.isEmpty()">
-            <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() == 1">
-                genetic_profile.STABLE_ID = #{molecularProfileIds[0]}
-                AND patient.STABLE_ID IN
-                <foreach item="item" collection="patientIds" open="(" separator="," close=")">
-                    #{item}
-                </foreach>
-            </if>
-            <if test="@java.util.Arrays@stream(molecularProfileIds.toArray()).distinct().count() > 1">
-                (patient.STABLE_ID, genetic_profile.STABLE_ID) IN
-                <foreach index="i" collection="patientIds" open="(" separator="," close=")">
-                      (#{patientIds[${i}]}, #{molecularProfileIds[${i}]})
-                </foreach>
-                AND genetic_profile.STABLE_ID IN
-                <foreach item="item" collection="molecularProfileIds" open="(" separator="," close=")">
-                    #{item}
-                </foreach>
-            </if>
-        </if>
-		<if test="patientIds == null">
-		    genetic_profile.STABLE_ID IN
-			<foreach item="item" collection="molecularProfileIds" open="(" separator="," close=")">
-			    #{item}
-			</foreach>
-		</if>
-        <if test="entrezGeneIds != null and !entrezGeneIds.isEmpty()">
-            AND mutation.ENTREZ_GENE_ID IN
-            <foreach item="item" collection="entrezGeneIds" open="(" separator="," close=")">
-                #{item}
-            </foreach>
-        </if>
-        <if test="snpOnly != null and snpOnly == true">
-            AND mutation_event.REFERENCE_ALLELE IN ('A','T','C','G')
-            AND mutation_event.TUMOR_SEQ_ALLELE IN ('A','T','C','G')
-        </if>
-        GROUP BY mutation.ENTREZ_GENE_ID
-    </select>
-    
     <select id="getMutationCountByPosition" resultType="org.cbioportal.model.MutationCountByPosition">
         SELECT
         #{entrezGeneId} AS entrezGeneId,
@@ -346,5 +330,7 @@
         WHERE mutation_event.ENTREZ_GENE_ID = #{entrezGeneId}
         AND mutation_event.ONCOTATOR_PROTEIN_POS_START >= #{proteinPosStart}
         AND mutation_event.ONCOTATOR_PROTEIN_POS_END <![CDATA[ <= ]]> #{proteinPosEnd}
+        <!-- TODO: Remove once fusions are removed from mutation table -->
+        AND mutation_event.MUTATION_TYPE != 'Fusion'
     </select>
 </mapper>

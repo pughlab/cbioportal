@@ -48,7 +48,7 @@
         <h1>cBioPortal validation report</h1>
         <p>Study directory:<br />test_data/study_wr_clin/</p>
         <p>For details, please see <a href='https://github.com/cbioportal/cbioportal/blob/master/docs/File-Formats.md'>the documentation on file formats supported by cBioPortal</a></p>
-        <p>cBioPortal version 1.5.1-SYSTEM-TEST</p>
+        <p>cBioPortal version unknown -- offline instance</p>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
           <a role="button" data-toggle="collapse" aria-expanded="true"
              href="#collapse_R2VuZXJhbA",
              aria-controls="collapse_R2VuZXJhbA">
-            <span class="badge">8</span>
+            <span class="badge">6</span>
             <h4 class="panel-title">General</h4>
           </a>
         </div>
@@ -93,7 +93,7 @@
                 <td><span class="glyphicon glyphicon-cog" aria-hidden="true"></span><span class="sr-only">Debug</span></td>
                 <td>&ndash;</td>
                 <td>&ndash;</td>
-                <td>Reading portal information from test_data/api_json_system_tests/cancertypes.json</td>
+                <td>Reading portal information from test_data/api_json_system_tests/cancer-types.json</td>
                 <td>&ndash;</td>
               </tr>
               <tr class="info">
@@ -101,20 +101,6 @@
                 <td>&ndash;</td>
                 <td>&ndash;</td>
                 <td>Reading portal information from test_data/api_json_system_tests/genes.json</td>
-                <td>&ndash;</td>
-              </tr>
-              <tr class="info">
-                <td><span class="glyphicon glyphicon-cog" aria-hidden="true"></span><span class="sr-only">Debug</span></td>
-                <td>&ndash;</td>
-                <td>&ndash;</td>
-                <td>Reading portal information from test_data/api_json_system_tests/genesaliases.json</td>
-                <td>&ndash;</td>
-              </tr>
-              <tr class="info">
-                <td><span class="glyphicon glyphicon-cog" aria-hidden="true"></span><span class="sr-only">Debug</span></td>
-                <td>&ndash;</td>
-                <td>&ndash;</td>
-                <td>Reading portal information from test_data/api_json_system_tests/treatments.json</td>
                 <td>&ndash;</td>
               </tr>
               <tr class="info">
@@ -189,7 +175,7 @@
                 <td><span class="glyphicon glyphicon-remove" aria-hidden="true"></span><span class="sr-only">Error</span></td>
                 <td>&ndash;</td>
                 <td>&ndash;</td>
-                <td>Invalid stable id for genetic_alteration_type &#39;MRNA_EXPRESSION&#39;, data_type &#39;Z-SCORE&#39;; expected one of [mrna_U133_Zscores, rna_seq_mrna_median_Zscores, mrna_median_Zscores, rna_seq_v2_mrna_median_Zscores, mirna_median_Zscores, mrna_merged_median_Zscores, mrna_zbynorm, mrna_seq_tpm_Zscores, mrna_seq_cpm_Zscores, rna_seq_mrna_capture_Zscores, mrna_seq_fpkm_capture_Zscores, mrna_seq_fpkm_polya_Zscores]</td>
+                <td>Invalid stable id for genetic_alteration_type &#39;MRNA_EXPRESSION&#39;, data_type &#39;Z-SCORE&#39;; expected one of [mrna_U133_Zscores, rna_seq_mrna_median_Zscores, mrna_median_Zscores, rna_seq_v2_mrna_median_Zscores, rna_seq_v2_mrna_median_normals_Zscores, mirna_median_Zscores, mrna_merged_median_Zscores, mrna_zbynorm, mrna_seq_tpm_Zscores, mrna_seq_cpm_Zscores, rna_seq_mrna_capture_Zscores, mrna_seq_fpkm_capture_Zscores, mrna_seq_fpkm_polya_Zscores, mrna_U133_all_sample_Zscores, mrna_all_sample_Zscores, rna_seq_mrna_median_all_sample_Zscores, mrna_median_all_sample_Zscores, rna_seq_v2_mrna_median_all_sample_Zscores, rna_seq_v2_mrna_median_all_sample_ref_normal_Zscores, mrna_seq_cpm_all_sample_Zscores, mrna_seq_tpm_all_sample_Zscores, rna_seq_mrna_capture_all_sample_Zscores, mrna_seq_fpkm_capture_all_sample_Zscores, mrna_seq_fpkm_polya_all_sample_Zscores]</td>
                 <td>mrna</td>
               </tr>
             </tbody>
@@ -297,7 +283,7 @@
           <a role="button" data-toggle="collapse" aria-expanded="true"
              href="#collapse_bWV0YV9zdHVkeS50eHQ",
              aria-controls="collapse_bWV0YV9zdHVkeS50eHQ">
-            <span class="badge">2</span>
+            <span class="badge">3</span>
             <h4 class="panel-title">meta_study.txt</h4>
           </a>
         </div>
@@ -328,6 +314,13 @@
                 <td>&ndash;</td>
                 <td>&ndash;</td>
                 <td>Validation of meta file complete</td>
+                <td>&ndash;</td>
+              </tr>
+              <tr class="success">
+                <td><span class="glyphicon glyphicon-ok" aria-hidden="true"></span><span class="sr-only">Info</span></td>
+                <td>&ndash;</td>
+                <td>&ndash;</td>
+                <td>No reference genome specified -- using default (hg19)</td>
                 <td>&ndash;</td>
               </tr>
             </tbody>

@@ -3,6 +3,8 @@ package org.cbioportal.persistence.mybatis;
 import org.cbioportal.model.SampleList;
 import org.cbioportal.model.SampleListToSampleId;
 import org.cbioportal.model.meta.BaseMeta;
+import org.springframework.cache.annotation.Cacheable;
+
 import org.cbioportal.persistence.PersistenceConstants;
 import org.cbioportal.persistence.SampleListRepository;
 import org.cbioportal.persistence.mybatis.util.OffsetCalculator;
@@ -46,10 +48,10 @@ public class SampleListMyBatisRepository implements SampleListRepository {
     }
 
     @Override
-    public List<SampleList> getAllSampleListsInStudy(String studyId, String projection, Integer pageSize,
+    public List<SampleList> getAllSampleListsInStudies(List<String> studyIds, String projection, Integer pageSize,
                                                      Integer pageNumber, String sortBy, String direction) {
         
-        return sampleListMapper.getAllSampleLists(studyId, projection, pageSize,
+        return sampleListMapper.getAllSampleLists(studyIds, projection, pageSize,
             offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
     }
 
@@ -66,6 +68,7 @@ public class SampleListMyBatisRepository implements SampleListRepository {
     }
 
     @Override
+    @Cacheable(cacheResolver = "staticRepositoryCacheOneResolver", condition = "@cacheEnabledConfig.getEnabled()")
 	public List<SampleListToSampleId> getSampleListSampleIds(List<Integer> sampleListIds) {
         
         return sampleListMapper.getSampleListSampleIds(sampleListIds);

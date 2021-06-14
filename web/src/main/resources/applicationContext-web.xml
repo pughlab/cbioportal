@@ -18,8 +18,8 @@
         <property name="ignoreUnresolvablePlaceholders" value="true" />
         <property name="locations">
             <list>
-                <value>file:///${PORTAL_HOME}/portal.properties</value>
                 <value>classpath:portal.properties</value>
+                <value>file:///${PORTAL_HOME}/portal.properties</value>
                 <value>classpath:maven.properties</value>
                 <value>classpath:git.properties</value>
             </list>
@@ -34,6 +34,7 @@
     </bean>
 
     <context:component-scan base-package="org.cbioportal.web" />
+    <context:component-scan base-package="org.cbioportal.documentation" />
     <aop:aspectj-autoproxy/>
 
     <mvc:resources mapping="/swagger-ui.html" location="classpath:/META-INF/resources/"/>

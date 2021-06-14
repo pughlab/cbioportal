@@ -28,21 +28,23 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 package org.mskcc.cbio.portal.scripts;
 
+import org.mskcc.cbio.portal.model.*;
+import org.mskcc.cbio.portal.dao.*;
+import org.mskcc.cbio.portal.util.ProgressMonitor;
+
 import java.io.*;
 import java.util.*;
-import org.mskcc.cbio.portal.repository.GenePanelRepositoryLegacy;
-import org.mskcc.cbio.portal.model.GenePanel;
-import org.cbioportal.model.Gene;
+
 import joptsimple.*;
-import org.mskcc.cbio.portal.util.ProgressMonitor;
-import org.mskcc.cbio.portal.util.SpringUtil;
+
+import static org.mskcc.cbio.portal.util.GenePanelUtil.extractGenes;
+import static org.mskcc.cbio.portal.util.GenePanelUtil.extractPropertyValue;
 
 /**
- *
  * @author heinsz
  */
 public class ImportGenePanel extends ConsoleRunnable {
@@ -56,29 +58,28 @@ public class ImportGenePanel extends ConsoleRunnable {
             String description = "Import gene panel files.";
 
             OptionParser parser = new OptionParser();
-            OptionSpec<String> data = parser.accepts( "data",
-                   "gene panel file" ).withRequiredArg().describedAs( "data_file.txt" ).ofType( String.class );
+            OptionSpec<String> data = parser.accepts("data",
+                "gene panel file").withRequiredArg().describedAs("data_file.txt").ofType(String.class);
             parser.accepts("noprogress", "this option can be given to avoid the messages regarding memory usage and % complete");
 
             OptionSet options = null;
             try {
-                options = parser.parse( args );
+                options = parser.parse(args);
             } catch (OptionException e) {
                 throw new UsageException(
-                        progName, description, parser,
-                        e.getMessage());
+                    progName, description, parser,
+                    e.getMessage());
             }
-            File genePanel_f= null;
-            if( options.has( data ) ){
-                genePanel_f = new File( options.valueOf( data ) );
+            File genePanel_f = null;
+            if (options.has(data)) {
+                genePanel_f = new File(options.valueOf(data));
             } else {
                 throw new UsageException(
-                        progName, description, parser,
-                        "'data' argument required.");
+                    progName, description, parser,
+                    "'data' argument required.");
             }
 
             setFile(genePanel_f);
-            SpringUtil.initDataSource();
             importData();
         } catch (RuntimeException e) {
             throw e;
@@ -92,101 +93,39 @@ public class ImportGenePanel extends ConsoleRunnable {
         Properties properties = new Properties();
         properties.load(new FileInputStream(genePanelFile));
 
-        GenePanelRepositoryLegacy genePanelRepositoryLegacy = (GenePanelRepositoryLegacy)SpringUtil.getApplicationContext().getBean("genePanelRepositoryLegacy");
+        String stableId = extractPropertyValue("stable_id", properties, true);
+        String description = extractPropertyValue("description", properties, false);
+        Set<CanonicalGene> canonicalGenes = extractGenes(properties, false);
 
-        String stableId = getPropertyValue("stable_id", properties, true);
-        String description = getPropertyValue("description", properties, false);
-        Set<Integer> genes = getGenes("gene_list", properties, genePanelRepositoryLegacy);
-
-        GenePanel genePanel = new GenePanel();
-        List<GenePanel> genePanelResult = genePanelRepositoryLegacy.getGenePanelByStableId(stableId);
+        GenePanel genePanel = DaoGenePanel.getGenePanelByStableId(stableId);
         boolean panelUsed = false;
-        if (genePanelResult != null && genePanelResult.size() > 0) {
-            genePanel = genePanelResult.get(0);
-            if (genePanelRepositoryLegacy.sampleProfileMappingExistsByPanel(genePanel.getInternalId())) {
+        if (genePanel != null) {
+            if (DaoSampleProfile.sampleProfileMappingExistsByPanel(genePanel.getInternalId())) {
                 ProgressMonitor.logWarning("Gene panel " + stableId + " already exists in databasel and is being used! Cannot import the gene panel!");
                 panelUsed = true;
-            }
-            else {
-                genePanelRepositoryLegacy.deleteGenePanel(genePanel.getInternalId());
+            } else {
+                DaoGenePanel.deleteGenePanel(genePanel);
                 ProgressMonitor.logWarning("Gene panel " + stableId + " already exists in the database but is not being used. Overwriting old gene panel data.");
             }
         }
 
-        if(!panelUsed) {
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("stableId", stableId);
-            map.put("description", description);
-            genePanelRepositoryLegacy.insertGenePanel(map);
-            genePanel = genePanelRepositoryLegacy.getGenePanelByStableId(stableId).get(0);
-
-            if (genes.size() > 0) {
-                map = new HashMap<String, Object>();
-                map.put("panelId", genePanel.getInternalId());
-                map.put("genes", genes);
-                genePanelRepositoryLegacy.insertGenePanelList(map);
+        if (!panelUsed) {
+            if (canonicalGenes != null) {
+                DaoGenePanel.addGenePanel(stableId, description, canonicalGenes);
+            } else {
+                ProgressMonitor.logWarning("Gene panel " + stableId + " cannot be imported because one or more genes in the panel are not found in the database, or are duplicated.");
             }
         }
     }
 
-    private static String getPropertyValue(String propertyName, Properties properties, boolean noSpaceAllowed) throws IllegalArgumentException {
-        String propertyValue = properties.getProperty(propertyName).trim();
-
-        if (propertyValue == null || propertyValue.length() == 0) {
-            throw new IllegalArgumentException(propertyName + " is not specified.");
-        }
-
-        if (noSpaceAllowed && propertyValue.contains(" ")) {
-            throw new IllegalArgumentException(propertyName + " cannot contain spaces: " + propertyValue);
-        }
-
-        return propertyValue;
-    }
-
-    private static Set<Integer> getGenes(String propertyName, Properties properties, GenePanelRepositoryLegacy genePanelRepositoryLegacy) {
-        String propertyValue = properties.getProperty(propertyName).trim();
-        if (propertyValue == null || propertyValue.length() == 0) {
-            throw new IllegalArgumentException(propertyName + " is not specified.");
-        }
-
-        Set<Integer> geneIds = new HashSet<>();
-        String[] genes = propertyValue.split("\t");
-        for (String panelGene : genes) {
-            Gene gene = null;
-            try {
-                Integer geneId = Integer.parseInt(panelGene);
-                gene = genePanelRepositoryLegacy.getGeneByEntrezGeneId(geneId);
-                if (gene != null) {
-                    geneIds.add(geneId);
-                }
-                else {
-                    throw new RuntimeException("Could not find gene in the database: " + String.valueOf(geneId));
-                }
-            }
-            catch (NumberFormatException e) {
-                gene = genePanelRepositoryLegacy.getGeneByHugoSymbol(panelGene);
-                if (gene == null) {
-                    gene = genePanelRepositoryLegacy.getGeneByAlias(panelGene);
-                }
-
-                if (gene != null) {
-                    geneIds.add(gene.getEntrezGeneId());
-                }
-            }
-        }
-
-        return geneIds;
-    }
-
-    public void setFile(File genePanelFile)
-    {
+    public void setFile(File genePanelFile) {
         this.genePanelFile = genePanelFile;
     }
 
     /**
      * Makes an instance to run with the given command line arguments.
      *
-     * @param args  the command line arguments to be used
+     * @param args the command line arguments to be used
      */
     public ImportGenePanel(String[] args) {
         super(args);
@@ -195,7 +134,7 @@ public class ImportGenePanel extends ConsoleRunnable {
     /**
      * Runs the command as a script and exits with an appropriate exit code.
      *
-     * @param args  the arguments given on the command line
+     * @param args the arguments given on the command line
      */
     public static void main(String[] args) {
         ConsoleRunnable runner = new ImportGenePanel(args);

@@ -25,26 +25,34 @@ package org.cbioportal.persistence.mybatis;
 
 import org.cbioportal.model.StructuralVariant;
 import org.cbioportal.persistence.StructuralVariantRepository;
+import org.cbioportal.persistence.mybatis.util.MolecularProfileCaseIdentifierUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository
 public class StructuralVariantMyBatisRepository implements StructuralVariantRepository {
 
     @Autowired
     private StructuralVariantMapper structuralVariantMapper;
-    
+    @Autowired
+    private MolecularProfileCaseIdentifierUtil molecularProfileCaseIdentifierUtil;
+
     @Override
-    public List<StructuralVariant> fetchStructuralVariants(List<String> molecularProfileIds, 
-            List<Integer> entrezGeneIds, List<String> sampleIds) {
+    public List<StructuralVariant> fetchStructuralVariants(List<String> molecularProfileIds,
+                                                           List<String> sampleIds,
+                                                           List<Integer> entrezGeneIds) {
 
-        if ((sampleIds.size() > 0) && (molecularProfileIds.size() != sampleIds.size())) {
-            throw new RuntimeException("molecularProfileIds list and sampleIds list should be the same length.");
-        }
-
-        return structuralVariantMapper.fetchStructuralVariants(molecularProfileIds,
-                entrezGeneIds, sampleIds);
+        return molecularProfileCaseIdentifierUtil.getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
+            .entrySet()
+            .stream()
+            .flatMap(entry ->structuralVariantMapper
+                .fetchStructuralVariants(Arrays.asList(entry.getKey()), new ArrayList<>(entry.getValue()), entrezGeneIds)
+                .stream())
+            .collect(Collectors.toList());
     }
 }

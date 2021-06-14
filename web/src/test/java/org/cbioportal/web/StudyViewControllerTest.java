@@ -1,33 +1,19 @@
 package org.cbioportal.web;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.cbioportal.model.ClinicalData;
-import org.cbioportal.model.ClinicalDataCount;
-import org.cbioportal.model.ClinicalDataCountItem;
-import org.cbioportal.model.CopyNumberCountByGene;
-import org.cbioportal.model.GenePanelData;
-import org.cbioportal.model.MolecularProfile;
-import org.cbioportal.model.MutationCountByGene;
-import org.cbioportal.model.Sample;
-import org.cbioportal.model.ClinicalDataCountItem.ClinicalDataType;
-import org.cbioportal.service.ClinicalDataService;
-import org.cbioportal.service.DiscreteCopyNumberService;
-import org.cbioportal.service.GenePanelService;
-import org.cbioportal.service.MolecularProfileService;
-import org.cbioportal.service.MutationService;
-import org.cbioportal.service.SampleService;
+import org.apache.commons.math3.util.Pair;
+import org.cbioportal.model.*;
+import org.cbioportal.model.util.Select;
+import org.cbioportal.persistence.AlterationRepository;
+import org.cbioportal.service.*;
+import org.cbioportal.service.util.MolecularProfileUtil;
 import org.cbioportal.web.parameter.ClinicalDataBinCountFilter;
 import org.cbioportal.web.parameter.ClinicalDataBinFilter;
 import org.cbioportal.web.parameter.ClinicalDataCountFilter;
 import org.cbioportal.web.parameter.ClinicalDataFilter;
 import org.cbioportal.web.parameter.SampleIdentifier;
 import org.cbioportal.web.parameter.StudyViewFilter;
+import org.cbioportal.web.util.SelectMockitoArgumentMatcher;
 import org.cbioportal.web.util.StudyViewFilterApplier;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,10 +27,18 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.*;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
@@ -59,12 +53,9 @@ public class StudyViewControllerTest {
     private static final String TEST_PATIENT_ID_1 = "test_patient_id_1";
     private static final String TEST_PATIENT_ID_2 = "test_patient_id_2";
     private static final String TEST_ATTRIBUTE_ID = "test_attribute_id";
-    private static final String TEST_MOLEULAR_PROFILE_ID_1 = "test_molecular_profile_id_1";
-    private static final String TEST_MOLEULAR_PROFILE_ID_2 = "test_molecular_profile_id_2";
     private static final String TEST_CLINICAL_DATA_VALUE_1 = "value1";
     private static final String TEST_CLINICAL_DATA_VALUE_2 = "value2";
     private static final String TEST_CLINICAL_DATA_VALUE_3 = "3";
-    private static final String TEST_CLINICAL_DATA_VALUE_4 = "NA";
     private static final Integer TEST_ENTREZ_GENE_ID_1 = 1;
     private static final Integer TEST_ENTREZ_GENE_ID_2 = 2;
     private static final String TEST_HUGO_GENE_SYMBOL_1 = "test_hugo_gene_symbol_1";
@@ -80,23 +71,50 @@ public class StudyViewControllerTest {
     @Autowired
     private ClinicalDataService clinicalDataService;
     @Autowired
-    private MutationService mutationService;
-    @Autowired
-    private MolecularProfileService molecularProfileService;
-    @Autowired
     private DiscreteCopyNumberService discreteCopyNumberService;
     @Autowired
     private SampleService sampleService;
     @Autowired
+    private StudyViewService studyViewService;
+    @Autowired
     private GenePanelService genePanelService;
+    @Autowired
+    private ClinicalAttributeService clinicalAttributeService;
+    @Autowired
+    private PatientService patientService;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private MockMvc mockMvc;
 
     @Bean
+    public MolecularProfileUtil molecularProfileUtil() {
+        return new MolecularProfileUtil();
+    }
+
+    @Bean
     public StudyViewFilterApplier studyViewFilterApplier() {
         return Mockito.mock(StudyViewFilterApplier.class);
+    }
+    
+    @Bean
+    public TreatmentService treatmentService() {
+        return Mockito.mock(TreatmentService.class);
+    }
+    
+    @Bean
+    public AlterationCountService alterationCountService() {
+        return Mockito.mock(AlterationCountService.class);
+    }
+
+    @Bean
+    public StudyViewService studyViewService() {
+        return Mockito.mock(StudyViewService.class);
+    }
+    
+    @Bean
+    public AlterationRepository alterationRepository() {
+        return Mockito.mock(AlterationRepository.class);
     }
 
     @Before
@@ -104,11 +122,12 @@ public class StudyViewControllerTest {
 
         Mockito.reset(studyViewFilterApplier);
         Mockito.reset(clinicalDataService);
-        Mockito.reset(mutationService);
-        Mockito.reset(molecularProfileService);
         Mockito.reset(discreteCopyNumberService);
         Mockito.reset(sampleService);
         Mockito.reset(genePanelService);
+        Mockito.reset(sampleService);
+        Mockito.reset(clinicalAttributeService);
+        Mockito.reset(patientService);
         mockMvc = MockMvcBuilders.webAppContextSetup(wac).build();
     }
 
@@ -120,12 +139,11 @@ public class StudyViewControllerTest {
         sampleIdentifier.setSampleId(TEST_SAMPLE_ID_1);
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
         List<ClinicalDataCountItem> clinicalDataCountItems = new ArrayList<>();
         ClinicalDataCountItem clinicalDataCountItem = new ClinicalDataCountItem();
         clinicalDataCountItem.setAttributeId(TEST_ATTRIBUTE_ID);
-        clinicalDataCountItem.setClinicalDataType(ClinicalDataType.SAMPLE);
         List<ClinicalDataCount> clinicalDataCounts = new ArrayList<>();
         ClinicalDataCount clinicalDataCount1 = new ClinicalDataCount();
         clinicalDataCount1.setAttributeId(TEST_ATTRIBUTE_ID);
@@ -139,14 +157,13 @@ public class StudyViewControllerTest {
         clinicalDataCounts.add(clinicalDataCount2);
         clinicalDataCountItem.setCounts(clinicalDataCounts);
         clinicalDataCountItems.add(clinicalDataCountItem);
-
-        Mockito.when(clinicalDataService.fetchClinicalDataCounts(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class), Mockito.any(ClinicalDataType.class))).thenReturn(clinicalDataCountItems);
+        
+        Mockito.when(clinicalDataService.fetchClinicalDataCounts(anyList(), anyList(), 
+            anyList())).thenReturn(clinicalDataCountItems);
 
         ClinicalDataCountFilter clinicalDataCountFilter = new ClinicalDataCountFilter();
         ClinicalDataFilter clinicalDataFilter = new ClinicalDataFilter();
         clinicalDataFilter.setAttributeId(TEST_ATTRIBUTE_ID);
-        clinicalDataFilter.setClinicalDataType(ClinicalDataType.SAMPLE);
         clinicalDataCountFilter.setAttributes(Arrays.asList(clinicalDataFilter));
         StudyViewFilter studyViewFilter = new StudyViewFilter();
         studyViewFilter.setStudyIds(Arrays.asList(TEST_STUDY_ID));
@@ -159,7 +176,6 @@ public class StudyViewControllerTest {
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].attributeId").value(TEST_ATTRIBUTE_ID))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].clinicalDataType").value("SAMPLE"))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].counts[0].attributeId").doesNotExist())
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].counts[0].value").value(TEST_CLINICAL_DATA_VALUE_1))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].counts[0].count").value(3))
@@ -176,7 +192,7 @@ public class StudyViewControllerTest {
         sampleIdentifier.setSampleId(TEST_SAMPLE_ID_1);
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
         List<ClinicalData> clinicalData = new ArrayList<>();
         ClinicalData clinicalData1 = new ClinicalData();
@@ -200,13 +216,22 @@ public class StudyViewControllerTest {
         clinicalData3.setSampleId(TEST_SAMPLE_ID_3);
         clinicalData.add(clinicalData3);
 
-        Mockito.when(clinicalDataService.fetchClinicalData(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class), Mockito.any(String.class), Mockito.any(String.class))).thenReturn(clinicalData);
+        Mockito.when(clinicalDataService.fetchClinicalData(anyList(), anyList(),
+            anyList(), any(String.class), any(String.class))).thenReturn(clinicalData);
+
+        ClinicalAttribute clinicalAttribute1 =new ClinicalAttribute();
+        clinicalAttribute1.setAttrId(TEST_ATTRIBUTE_ID);
+        clinicalAttribute1.setPatientAttribute(false);
+        
+        Mockito.when(clinicalAttributeService.getClinicalAttributesByStudyIdsAndAttributeIds(
+                anyList(), anyList()))
+        .thenReturn(Arrays.asList(clinicalAttribute1));
+
+        Mockito.when(patientService.getPatientsOfSamples(anyList(), anyList())).thenReturn(Arrays.asList());
 
         ClinicalDataBinCountFilter clinicalDataBinCountFilter = new ClinicalDataBinCountFilter();
         ClinicalDataBinFilter clinicalDataBinFilter = new ClinicalDataBinFilter();
         clinicalDataBinFilter.setAttributeId(TEST_ATTRIBUTE_ID);
-        clinicalDataBinFilter.setClinicalDataType(ClinicalDataType.SAMPLE);
         clinicalDataBinFilter.setDisableLogScale(false);
         clinicalDataBinCountFilter.setAttributes(Collections.singletonList(clinicalDataBinFilter));
         StudyViewFilter studyViewFilter = new StudyViewFilter();
@@ -239,36 +264,34 @@ public class StudyViewControllerTest {
     @Test
     public void fetchMutatedGenes() throws Exception {
 
-        MolecularProfile molecularProfile = new MolecularProfile();
-        molecularProfile.setCancerStudyIdentifier(TEST_STUDY_ID);
-        Mockito.when(molecularProfileService.getMolecularProfile(Mockito.anyString())).thenReturn(molecularProfile);
-
         List<SampleIdentifier> filteredSampleIdentifiers = new ArrayList<>();
         SampleIdentifier sampleIdentifier = new SampleIdentifier();
         sampleIdentifier.setSampleId(TEST_SAMPLE_ID_1);
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
-        List<MutationCountByGene> mutationCounts = new ArrayList<>();
-        MutationCountByGene mutationCount1 = new MutationCountByGene();
+        List<AlterationCountByGene> mutationCounts = new ArrayList<>();
+        AlterationCountByGene mutationCount1 = new AlterationCountByGene();
         mutationCount1.setEntrezGeneId(TEST_ENTREZ_GENE_ID_1);
         mutationCount1.setHugoGeneSymbol(TEST_HUGO_GENE_SYMBOL_1);
         mutationCount1.setNumberOfAlteredCases(1);
         mutationCount1.setTotalCount(3);
         mutationCounts.add(mutationCount1);
-        MutationCountByGene mutationCount2 = new MutationCountByGene();
+        AlterationCountByGene mutationCount2 = new AlterationCountByGene();
         mutationCount2.setEntrezGeneId(TEST_ENTREZ_GENE_ID_2);
         mutationCount2.setHugoGeneSymbol(TEST_HUGO_GENE_SYMBOL_2);
         mutationCount2.setNumberOfAlteredCases(2);
         mutationCount2.setTotalCount(2);
         mutationCounts.add(mutationCount2);
 
-        Mockito.when(mutationService.getSampleCountInMultipleMolecularProfiles(Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class), Mockito.anyListOf(Integer.class), Mockito.anyBoolean())).thenReturn(mutationCounts);
-
         StudyViewFilter studyViewFilter = new StudyViewFilter();
         studyViewFilter.setStudyIds(Arrays.asList(TEST_STUDY_ID));
+
+        Mockito.when(studyViewService.getMutationAlterationCountByGenes(
+            Arrays.asList(TEST_STUDY_ID),
+            Arrays.asList(TEST_SAMPLE_ID_1)))
+            .thenReturn(mutationCounts);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/mutated-genes/fetch")
             .accept(MediaType.APPLICATION_JSON)
@@ -276,79 +299,73 @@ public class StudyViewControllerTest {
             .content(objectMapper.writeValueAsString(studyViewFilter)))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].entrezGeneId").value(TEST_ENTREZ_GENE_ID_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].numberOfAlteredCases").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].totalCount").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].entrezGeneId").value(TEST_ENTREZ_GENE_ID_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].numberOfAlteredCases").value(1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].totalCount").value(3));
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].entrezGeneId").value(TEST_ENTREZ_GENE_ID_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].numberOfAlteredCases").value(1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].totalCount").value(3))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].entrezGeneId").value(TEST_ENTREZ_GENE_ID_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].numberOfAlteredCases").value(2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].totalCount").value(2));
     }
 
     @Test
     public void fetchFusionGenes() throws Exception {
-
-        MolecularProfile molecularProfile = new MolecularProfile();
-        molecularProfile.setCancerStudyIdentifier(TEST_STUDY_ID);
-        Mockito.when(molecularProfileService.getMolecularProfile(Mockito.anyString())).thenReturn(molecularProfile);
 
         List<SampleIdentifier> filteredSampleIdentifiers = new ArrayList<>();
         SampleIdentifier sampleIdentifier = new SampleIdentifier();
         sampleIdentifier.setSampleId(TEST_SAMPLE_ID_1);
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
-        List<MutationCountByGene> fusionCounts = new ArrayList<>();
-        MutationCountByGene fusionCount1 = new MutationCountByGene();
+        List<AlterationCountByGene> fusionCounts = new ArrayList<>();
+        AlterationCountByGene fusionCount1 = new AlterationCountByGene();
         fusionCount1.setEntrezGeneId(TEST_ENTREZ_GENE_ID_1);
         fusionCount1.setHugoGeneSymbol(TEST_HUGO_GENE_SYMBOL_1);
         fusionCount1.setNumberOfAlteredCases(1);
         fusionCount1.setTotalCount(1);
         fusionCounts.add(fusionCount1);
-        MutationCountByGene fusionCount2 = new MutationCountByGene();
+        AlterationCountByGene fusionCount2 = new AlterationCountByGene();
         fusionCount2.setEntrezGeneId(TEST_ENTREZ_GENE_ID_2);
         fusionCount2.setHugoGeneSymbol(TEST_HUGO_GENE_SYMBOL_2);
         fusionCount2.setNumberOfAlteredCases(2);
         fusionCount2.setTotalCount(2);
         fusionCounts.add(fusionCount2);
 
-        Mockito.when(mutationService.getSampleCountInMultipleMolecularProfilesForFusions(Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class), Mockito.anyListOf(Integer.class), Mockito.anyBoolean())).thenReturn(fusionCounts);
+        Mockito.when(studyViewService.getStructuralVariantAlterationCountByGenes(
+            Arrays.asList(TEST_STUDY_ID),
+            Arrays.asList(TEST_SAMPLE_ID_1)))
+            .thenReturn(fusionCounts);
 
         StudyViewFilter studyViewFilter = new StudyViewFilter();
         studyViewFilter.setStudyIds(Arrays.asList(TEST_STUDY_ID));
 
-        mockMvc.perform(MockMvcRequestBuilders.post("/fusion-genes/fetch")
+        mockMvc.perform(MockMvcRequestBuilders.post("/structuralvariant-genes/fetch")
             .accept(MediaType.APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(studyViewFilter)))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].entrezGeneId").value(TEST_ENTREZ_GENE_ID_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].numberOfAlteredCases").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].totalCount").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].entrezGeneId").value(TEST_ENTREZ_GENE_ID_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].numberOfAlteredCases").value(1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].totalCount").value(1));
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].entrezGeneId").value(TEST_ENTREZ_GENE_ID_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].numberOfAlteredCases").value(1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].totalCount").value(1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].entrezGeneId").value(TEST_ENTREZ_GENE_ID_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].numberOfAlteredCases").value(2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].totalCount").value(2));
     }
 
     @Test
     public void fetchCNAGenes() throws Exception {
-
-        MolecularProfile molecularProfile = new MolecularProfile();
-        molecularProfile.setCancerStudyIdentifier(TEST_STUDY_ID);
-        Mockito.when(molecularProfileService.getMolecularProfile(Mockito.anyString())).thenReturn(molecularProfile);
 
         List<SampleIdentifier> filteredSampleIdentifiers = new ArrayList<>();
         SampleIdentifier sampleIdentifier = new SampleIdentifier();
         sampleIdentifier.setSampleId(TEST_SAMPLE_ID_1);
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
         List<CopyNumberCountByGene> cnaCounts = new ArrayList<>();
         CopyNumberCountByGene cnaCount1 = new CopyNumberCountByGene();
@@ -366,8 +383,9 @@ public class StudyViewControllerTest {
         cnaCount2.setAlteration(2);
         cnaCounts.add(cnaCount2);
 
-        Mockito.when(discreteCopyNumberService.getSampleCountInMultipleMolecularProfiles(Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class), Mockito.anyListOf(Integer.class), Mockito.anyListOf(Integer.class), Mockito.anyBoolean()))
+        Mockito.when(studyViewService.getCNAAlterationCountByGenes(
+            Arrays.asList(TEST_STUDY_ID),
+            Arrays.asList(TEST_SAMPLE_ID_1)))
             .thenReturn(cnaCounts);
 
         StudyViewFilter studyViewFilter = new StudyViewFilter();
@@ -379,17 +397,17 @@ public class StudyViewControllerTest {
             .content(objectMapper.writeValueAsString(studyViewFilter)))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].entrezGeneId").value(TEST_ENTREZ_GENE_ID_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].numberOfAlteredCases").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].cytoband").value(TEST_CYTOBAND_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].alteration").value(2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].entrezGeneId").value(TEST_ENTREZ_GENE_ID_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].numberOfAlteredCases").value(1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].cytoband").value(TEST_CYTOBAND_1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].alteration").value(-2))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].totalCount").doesNotExist())
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].entrezGeneId").value(TEST_ENTREZ_GENE_ID_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].numberOfAlteredCases").value(1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].cytoband").value(TEST_CYTOBAND_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].alteration").value(-2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].entrezGeneId").value(TEST_ENTREZ_GENE_ID_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].hugoGeneSymbol").value(TEST_HUGO_GENE_SYMBOL_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].numberOfAlteredCases").value(2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].cytoband").value(TEST_CYTOBAND_2))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].alteration").value(2))
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].totalCount").doesNotExist());
     }
 
@@ -402,8 +420,8 @@ public class StudyViewControllerTest {
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
 
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject(), Mockito.eq(false))).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any(), Mockito.eq(false))).thenReturn(filteredSampleIdentifiers);
 
         List<Sample> filteredSamples = new ArrayList<>();
         Sample sample1 = new Sample();
@@ -417,7 +435,7 @@ public class StudyViewControllerTest {
         sample2.setCancerStudyIdentifier(TEST_STUDY_ID);
         filteredSamples.add(sample2);
 
-        Mockito.when(sampleService.fetchSamples(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class),
+        Mockito.when(sampleService.fetchSamples(anyList(), anyList(),
             Mockito.anyString())).thenReturn(filteredSamples);
 
         StudyViewFilter studyViewFilter = new StudyViewFilter();
@@ -440,10 +458,6 @@ public class StudyViewControllerTest {
     @Test
     public void fetchSampleCounts() throws Exception {
 
-        MolecularProfile molecularProfile = new MolecularProfile();
-        molecularProfile.setCancerStudyIdentifier(TEST_STUDY_ID);
-        Mockito.when(molecularProfileService.getMolecularProfile(Mockito.anyString())).thenReturn(molecularProfile);
-
         List<SampleIdentifier> filteredSampleIdentifiers = new ArrayList<>();
         SampleIdentifier sampleIdentifier1 = new SampleIdentifier();
         sampleIdentifier1.setSampleId(TEST_SAMPLE_ID_1);
@@ -457,41 +471,39 @@ public class StudyViewControllerTest {
         sampleIdentifier3.setSampleId(TEST_SAMPLE_ID_3);
         sampleIdentifier3.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier3);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
-
-        List<GenePanelData> genePanelDataList = new ArrayList<>();
-        GenePanelData genePanelData1 = new GenePanelData();
-        genePanelData1.setProfiled(true);
-        genePanelDataList.add(genePanelData1);
-        GenePanelData genePanelData2 = new GenePanelData();
-        genePanelData2.setProfiled(true);
-        genePanelDataList.add(genePanelData2);
-        GenePanelData genePanelData3 = new GenePanelData();
-        genePanelData3.setProfiled(false);
-        genePanelDataList.add(genePanelData3);
-
-        Mockito.when(molecularProfileService.getFirstMutationProfileIds(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class)))
-            .thenReturn(Arrays.asList(TEST_MOLEULAR_PROFILE_ID_1));
-
-        Mockito.when(molecularProfileService.getFirstDiscreteCNAProfileIds(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class)))
-            .thenReturn(Arrays.asList(TEST_MOLEULAR_PROFILE_ID_2));
-
-        Mockito.when(genePanelService.fetchGenePanelDataInMultipleMolecularProfiles(Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class))).thenReturn(genePanelDataList);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
         StudyViewFilter studyViewFilter = new StudyViewFilter();
         studyViewFilter.setStudyIds(Arrays.asList(TEST_STUDY_ID));
 
-        mockMvc.perform(MockMvcRequestBuilders.post("/sample-counts/fetch")
+        List<GenomicDataCount> genomicDataCounts = new ArrayList<>();
+        GenomicDataCount genomicDataCount1 = new GenomicDataCount();
+        genomicDataCount1.setLabel("Profile 2");
+        genomicDataCount1.setValue("profile_type_2");
+        genomicDataCount1.setCount(1);
+        genomicDataCounts.add(genomicDataCount1);
+        GenomicDataCount genomicDataCount2 = new GenomicDataCount();
+        genomicDataCount2.setLabel("Profile 1");
+        genomicDataCount2.setValue("profile_type_1");
+        genomicDataCount2.setCount(2);
+        genomicDataCounts.add(genomicDataCount2);
+        Mockito.when(studyViewService.getGenomicDataCounts(
+            Arrays.asList(TEST_STUDY_ID, TEST_STUDY_ID, TEST_STUDY_ID),
+            Arrays.asList(TEST_SAMPLE_ID_1, TEST_SAMPLE_ID_2, TEST_SAMPLE_ID_3)))
+            .thenReturn(genomicDataCounts);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/molecular-profile-sample-counts/fetch")
             .accept(MediaType.APPLICATION_JSON)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(studyViewFilter)))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(MockMvcResultMatchers.jsonPath("$.numberOfMutationProfiledSamples").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$.numberOfMutationUnprofiledSamples").value(1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$.numberOfCNAProfiledSamples").value(2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$.numberOfCNAUnprofiledSamples").value(1));
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].label").value("Profile 2"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].value").value("profile_type_2"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[0].count").value(1))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].label").value("Profile 1"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].value").value("profile_type_1"))
+            .andExpect(MockMvcResultMatchers.jsonPath("$[1].count").value(2));
     }
 
     @Test
@@ -502,8 +514,20 @@ public class StudyViewControllerTest {
         sampleIdentifier.setSampleId(TEST_SAMPLE_ID_1);
         sampleIdentifier.setStudyId(TEST_STUDY_ID);
         filteredSampleIdentifiers.add(sampleIdentifier);
-        Mockito.when(studyViewFilterApplier.apply(Mockito.anyObject())).thenReturn(filteredSampleIdentifiers);
+        Mockito.when(studyViewFilterApplier.apply(any())).thenReturn(filteredSampleIdentifiers);
 
+        ClinicalAttribute clinicalAttribute1 =new ClinicalAttribute();
+        clinicalAttribute1.setAttrId("FRACTION_GENOME_ALTERED");
+        clinicalAttribute1.setPatientAttribute(false);
+        ClinicalAttribute clinicalAttribute2 =new ClinicalAttribute();
+        clinicalAttribute2.setAttrId("MUTATION_COUNT");
+        clinicalAttribute2.setPatientAttribute(false);
+        
+        Mockito.when(clinicalAttributeService.getClinicalAttributesByStudyIdsAndAttributeIds(
+                anyList(), anyList()))
+        .thenReturn(Arrays.asList(clinicalAttribute1,clinicalAttribute2));
+        
+        
         List<ClinicalData> clinicalData = new ArrayList<>();
         ClinicalData clinicalData1 = new ClinicalData();
         clinicalData1.setAttrId("FRACTION_GENOME_ALTERED");
@@ -541,9 +565,9 @@ public class StudyViewControllerTest {
         clinicalData6.setStudyId(TEST_STUDY_ID);
         clinicalData6.setSampleId(TEST_SAMPLE_ID_3);
         clinicalData.add(clinicalData6);
-
-        Mockito.when(clinicalDataService.fetchClinicalData(Mockito.anyListOf(String.class), Mockito.anyListOf(String.class),
-            Mockito.anyListOf(String.class), Mockito.anyString(), Mockito.anyString())).thenReturn(clinicalData);
+        
+        Mockito.when(clinicalDataService.fetchClinicalData(anyList(), anyList(), 
+            anyList(), Mockito.anyString(), Mockito.anyString())).thenReturn(clinicalData);
 
         StudyViewFilter studyViewFilter = new StudyViewFilter();
         studyViewFilter.setStudyIds(Arrays.asList(TEST_STUDY_ID));
@@ -557,8 +581,7 @@ public class StudyViewControllerTest {
             .param("xAxisStart", "0.0")
             .param("xAxisEnd", "1.0")
             .param("yAxisAttributeId", "MUTATION_COUNT")
-            .param("yAxisBinCount", "3")
-            .param("clinicalDataType", "SAMPLE"))
+            .param("yAxisBinCount", "3"))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andExpect(MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].binX").value(0.0))

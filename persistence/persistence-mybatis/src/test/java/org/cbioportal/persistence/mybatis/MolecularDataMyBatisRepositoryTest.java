@@ -2,6 +2,7 @@ package org.cbioportal.persistence.mybatis;
 
 import org.cbioportal.model.GeneMolecularAlteration;
 import org.cbioportal.model.GenesetMolecularAlteration;
+import org.cbioportal.model.MolecularProfileSamples;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -11,9 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration("/testContextDatabase.xml")
@@ -26,21 +27,22 @@ public class MolecularDataMyBatisRepositoryTest {
     @Test
     public void getCommaSeparatedSampleIdsOfMolecularProfile() throws Exception {
 
-        String result = molecularDataMyBatisRepository
+        MolecularProfileSamples result = molecularDataMyBatisRepository
             .getCommaSeparatedSampleIdsOfMolecularProfile("study_tcga_pub_gistic");
 
-        Assert.assertEquals("1,2,3,4,5,6,7,8,9,10,11,12,13,14,", result);
+        Assert.assertEquals("1,2,3,4,5,6,7,8,9,10,11,12,13,14,", result.getCommaSeparatedSampleIds());
     }
 
     @Test
     public void getCommaSeparatedSampleIdsOfMolecularProfiles() throws Exception {
 
-        List<String> result = molecularDataMyBatisRepository
-            .getCommaSeparatedSampleIdsOfMolecularProfiles(Arrays.asList("study_tcga_pub_mrna", "study_tcga_pub_m_na"));
+        Map<String, MolecularProfileSamples> result = molecularDataMyBatisRepository
+            .commaSeparatedSampleIdsOfMolecularProfilesMap(Stream.of("study_tcga_pub_mrna", "study_tcga_pub_m_na")
+                                                            .collect(Collectors.toSet()));
 
         Assert.assertEquals(2, result.size());
-        Assert.assertEquals("1,2,3,4,5,6,7,8,9,10,11,", result.get(0));
-        Assert.assertEquals("2,3,6,8,9,10,12,13,", result.get(1));
+        Assert.assertEquals("1,2,3,4,5,6,7,8,9,10,11,", result.get("study_tcga_pub_m_na").getCommaSeparatedSampleIds());
+        Assert.assertEquals("2,3,6,8,9,10,12,13,", result.get("study_tcga_pub_mrna").getCommaSeparatedSampleIds());
     }
 
     @Test
@@ -97,7 +99,7 @@ public class MolecularDataMyBatisRepositoryTest {
         entrezGeneIds.add(208);
 
         List<GeneMolecularAlteration> result = molecularDataMyBatisRepository
-            .getGeneMolecularAlterationsInMultipleMolecularProfiles(Arrays.asList("study_tcga_pub_gistic", "study_tcga_pub_mrna"),
+            .getGeneMolecularAlterationsInMultipleMolecularProfiles(Stream.of("study_tcga_pub_gistic", "study_tcga_pub_mrna").collect(Collectors.toSet()),
             entrezGeneIds, "SUMMARY");
 
         Assert.assertEquals(3, result.size());

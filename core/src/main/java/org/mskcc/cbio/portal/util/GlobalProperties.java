@@ -32,6 +32,24 @@
 
 package org.mskcc.cbio.portal.util;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Properties;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,14 +57,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
-
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.charset.StandardCharsets;
-import java.net.HttpURLConnection;
-import java.util.*;
-import java.net.URL;
 
 
 /**
@@ -142,8 +152,8 @@ public class GlobalProperties {
     public static final String STUDY_VIEW_MDACC_HEATMAP_URL = "mdacc.heatmap.study.url";
     public static final String STUDY_VIEW_MDACC_HEATMAP_META_URL = "mdacc.heatmap.study.meta.url";
 
-    public static final String ONCOKB_PUBLIC_API_URL = "oncokb.public_api.url";
     public static final String SHOW_ONCOKB = "show.oncokb";
+    public static final String ONCOKB_TOKEN = "oncokb.token";
 
     private static String sessionServiceURL;
     @Value("${session.service.url:}") // default is empty string
@@ -230,8 +240,6 @@ public class GlobalProperties {
     public static final String ONCOKB_GENE_STATUS = "oncokb.geneStatus";
     public static final String SHOW_HOTSPOT = "show.hotspot";
     
-    public static final String RECACHE_STUDY_AFTER_UPDATE = "recache_study_after_update";
-    
     public static final String DB_VERSION = "db.version";
     private static boolean suppressSchemaVersionMismatchErrors;
     @Value("${db.suppress_schema_version_mismatch_errors:false}") // default is false
@@ -266,17 +274,27 @@ public class GlobalProperties {
     @Value("${sitemaps:false}") // default is false
     public void setSitemaps(String property) { sitemaps = Boolean.parseBoolean(property); }
 
+    private static boolean showTranscriptDropdown;
+    @Value("${show.transcript_dropdown:false}") // default is false
+    public void setShowTranscriptDropdown(String property) { showTranscriptDropdown = Boolean.parseBoolean(property); }
+
     private static boolean showGenomeNexus;
     @Value("${show.genomenexus:true}") // default is true
     public void setShowGenomeNexus(String property) { showGenomeNexus = Boolean.parseBoolean(property); }
 
-    private static boolean datRevokeOtherTokens;
-    @Value("${dat.uuid.revoke_other_tokens:true}") // default is true
-    public void setDatRevokeOtherTokens(String property) { datRevokeOtherTokens = Boolean.parseBoolean(property);}
+    // TODO should support more sources such as clinvar,gnomad,sift
+    private static String showGenomeNexusAnnotationSources;
+    @Value("${show.genomenexus.annotation_sources:mutation_assessor}") // Available sources: mutation_assessor
+    public void setShowGenomeNexusAnnotationSources(String property) { showGenomeNexusAnnotationSources = property; }
 
-    private static String datMethod;
-    @Value("${dat.method:none}") // default is 'none'
-    public void setDatMethod(String property) { datMethod = property;}
+    private static boolean showMutationMapperToolGrch38;
+    @Value("${show.mutation_mappert_tool.grch38:true}") // default is true
+    public void setShowMutationMapperToolGrch38(String property) { showMutationMapperToolGrch38 = Boolean.parseBoolean(property); }
+
+    private static boolean showSignal;
+    @Value("${show.signal:false}") // default is false
+    public void setShowSignal(String property) { showSignal = Boolean.parseBoolean(property); }
+
 	/*
      * Trim whitespace of url and append / if it does not exist. Return empty
      * string otherwise.
@@ -312,6 +330,10 @@ public class GlobalProperties {
 	private static String genomeNexusApiUrl;
 	@Value("${genomenexus.url:v1.genomenexus.org}") // default
 	public void setGenomeNexusApiUrl(String property) { genomeNexusApiUrl = parseUrl(property); }
+
+	private static String genomeNexusGrch38ApiUrl;
+	@Value("${genomenexus.url.grch38:grch38.genomenexus.org}") // default
+	public void setGenomeNexusGrch38ApiUrl(String property) { genomeNexusGrch38ApiUrl = parseUrl(property); }
 
     private static String frontendUrl;
     @Value("${frontend.url:}") // default is empty string
@@ -858,34 +880,16 @@ public class GlobalProperties {
         return sessionServicePassword;
     }
 
-    public static String getOncoKBPublicApiUrl()
-    {
-        String oncokbApiUrl = portalProperties.getProperty(ONCOKB_PUBLIC_API_URL);
-        String showOncokb = portalProperties.getProperty(SHOW_ONCOKB);
-        
-        if(showOncokb == null || showOncokb.isEmpty()) {
-                    showOncokb = "true";
-        }
-        
-        // Empty string should be used if you want to disable the OncoKB annotation.
-        if(oncokbApiUrl == null || oncokbApiUrl.isEmpty()) {
-            oncokbApiUrl = "oncokb.org/api/v1";
-        }
-        
-        if(showOncokb.equals("true")) {
-           return oncokbApiUrl;
-        } else {
-           return "";
-        }
-        
-    }
-
     public static String getCivicUrl() {
         return civicUrl;
     }
 
     public static String getGenomeNexusApiUrl() {
         return genomeNexusApiUrl;
+    }
+
+    public static String getGenomeNexusGrch38ApiUrl() {
+        return genomeNexusGrch38ApiUrl;
     }
 
     public static boolean showOncoKB() {
@@ -918,8 +922,24 @@ public class GlobalProperties {
         return showCivic;
     }
 
+    public static boolean showTranscriptDropdown() {
+        return showTranscriptDropdown;
+    }
+
     public static boolean showGenomeNexus() {
         return showGenomeNexus;
+    }
+
+    public static String showGenomeNexusAnnotationSources() {
+        return showGenomeNexusAnnotationSources;
+    }
+
+    public static boolean showMutationMapperToolGrch38() {
+        return showMutationMapperToolGrch38;
+    }
+
+    public static boolean showSignal() {
+        return showSignal;
     }
 
     public static String getFrontendUrl() {
@@ -949,14 +969,6 @@ public class GlobalProperties {
     public static String getOncoKBGeneStatus()
     {
         return portalProperties.getProperty(ONCOKB_GENE_STATUS);
-    }
-    
-    public static boolean getRecacheStudyAfterUpdate() {
-        String recacheStudyAfterUpdate = portalProperties.getProperty(RECACHE_STUDY_AFTER_UPDATE);
-        if (recacheStudyAfterUpdate==null || recacheStudyAfterUpdate.isEmpty()) {
-            return false;
-        }
-        return Boolean.parseBoolean(recacheStudyAfterUpdate);
     }
     
     public static String getBitlyUser() {
@@ -1098,7 +1110,7 @@ public class GlobalProperties {
     
     public static void main(String[] args)
     {
-        System.out.println(getAppVersion());
+        System.out.println(getAppVersion());    
     }
     
     public static boolean showBinaryCustomDriverAnnotation() {
@@ -1178,15 +1190,11 @@ public class GlobalProperties {
         }
     }
 
-    public static Boolean getRevokeOtherTokens() {
-        return datRevokeOtherTokens;
-    }
-
-    public static String getDatMethod() {
-        return datMethod;
-    }
-    
     public static String getReferenceGenomeName() {
         return portalProperties.getProperty(UCSC_BUILD, DEFAULT_UCSC_BUILD);
+    }
+    
+    public static String getOncoKbToken()  {
+        return portalProperties.getProperty(ONCOKB_TOKEN, null);
     }
 }

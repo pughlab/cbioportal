@@ -7,6 +7,7 @@ import org.cbioportal.model.CancerStudy;
 import org.cbioportal.model.CancerStudyTags;
 import org.cbioportal.service.StudyService;
 import org.cbioportal.service.exception.StudyNotFoundException;
+import org.cbioportal.web.config.PublicApiTags;
 import org.cbioportal.web.config.annotation.PublicApi;
 import org.cbioportal.web.parameter.Direction;
 import org.cbioportal.web.parameter.HeaderKeyConstants;
@@ -46,12 +47,12 @@ import java.util.Map;
 @PublicApi
 @RestController
 @Validated
-@Api(tags = "B. Studies", description = " ")
+@Api(tags = PublicApiTags.STUDIES, description = " ")
 public class StudyController {
     @Value("${authenticate:false}")
     private String authenticate;
 
-    @Value("${app.name:unknown")
+    @Value("${app.name:unknown}")
     private String appName;
     
     private boolean usingAuth() {
@@ -68,10 +69,12 @@ public class StudyController {
     
     @PostConstruct
     private void warmDefaultResponseCache() {
-        defaultResponse = studyService.getAllStudies(
-            null, Projection.SUMMARY.name(),
-            10000000, 0,
-            null, Direction.ASC.name());
+        if (!usingAuth()) {
+            defaultResponse = studyService.getAllStudies(
+                null, Projection.SUMMARY.name(),
+                10000000, 0,
+                null, Direction.ASC.name());
+        }
     }
 
     @Autowired

@@ -11,6 +11,7 @@ import org.cbioportal.service.exception.PatientNotFoundException;
 import org.cbioportal.service.exception.SampleNotFoundException;
 import org.cbioportal.service.exception.StudyNotFoundException;
 import org.cbioportal.service.SampleService;
+import org.cbioportal.web.config.PublicApiTags;
 import org.cbioportal.web.config.annotation.PublicApi;
 import org.cbioportal.web.parameter.*;
 import org.cbioportal.web.parameter.sort.SampleSortBy;
@@ -41,12 +42,13 @@ import java.util.stream.Collectors;
 @PublicApi
 @RestController
 @Validated
-@Api(tags = "D. Samples", description = " ")
+@Api(tags = PublicApiTags.SAMPLES, description = " ")
 public class SampleController {
 
     public static final int SAMPLE_MAX_PAGE_SIZE = 10000000;
     private static final String SAMPLE_DEFAULT_PAGE_SIZE = "10000000";
 
+    
     @Autowired
     private SampleService sampleService;
     
@@ -61,8 +63,8 @@ public class SampleController {
     
     private boolean usingAuth() {
         return !authenticate.isEmpty()
-            && !authenticate.equals("false")
-            && !authenticate.contains("social_auth");
+                && !authenticate.equals("false")
+                && !authenticate.contains("social_auth");
     }
     
     @RequestMapping(value = "/samples", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -114,9 +116,8 @@ public class SampleController {
         if (projection == Projection.META) {
             HttpHeaders httpHeaders = new HttpHeaders();
             httpHeaders.add(
-                HeaderKeyConstants.TOTAL_COUNT,
-                sampleService.getMetaSamples(keyword, studyIds).getTotalCount().toString()
-            );
+                    HeaderKeyConstants.TOTAL_COUNT,
+                    sampleService.getMetaSamples(keyword, studyIds).getTotalCount().toString());
             return new ResponseEntity<>(httpHeaders, HttpStatus.OK);
         }
         return new ResponseEntity<>(
@@ -242,9 +243,12 @@ public class SampleController {
             return new ResponseEntity<>(responseHeaders, HttpStatus.OK);
         } else {
             List<Sample> samples;
-
             if (interceptedSampleFilter.getSampleListIds() != null) {
-                samples = sampleService.fetchSamples(interceptedSampleFilter.getSampleListIds(), projection.name());
+                samples = new ArrayList<>();
+                List<String> sampleListIds = interceptedSampleFilter.getSampleListIds();
+                for (String sampleListId : sampleListIds) {
+                    samples.addAll(fetchSamplesInner(Arrays.asList(sampleListId), projection.name()));
+                }
             } else {
                 if (interceptedSampleFilter.getSampleIdentifiers() != null) {
                     extractStudyAndSampleIds(interceptedSampleFilter, studyIds, sampleIds);
@@ -257,7 +261,13 @@ public class SampleController {
             return new ResponseEntity<>(samples, HttpStatus.OK);
         }
     }
-
+    
+    public List<Sample> fetchSamplesInner(
+        List<String> sampleListIds, String projection
+    ) {
+        return sampleService.fetchSamples(sampleListIds, projection);
+    }
+    
     private void extractStudyAndSampleIds(SampleFilter sampleFilter, List<String> studyIds, List<String> sampleIds) {
 
         for (SampleIdentifier sampleIdentifier : sampleFilter.getSampleIdentifiers()) {
