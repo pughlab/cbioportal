@@ -122,7 +122,10 @@
             "enable_request_body_gzip_compression",
             "query_product_limit",
             "skin.show_gsva",
-            "skin.citation_rule_text"
+            "saml.logout.local",
+            "skin.citation_rule_text",
+            "skin.geneset_hierarchy.default_p_value",
+            "skin.geneset_hierarchy.default_gsva_score",
         };
 
 
