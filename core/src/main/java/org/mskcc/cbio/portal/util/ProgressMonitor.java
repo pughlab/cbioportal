@@ -32,14 +32,13 @@
 
 package org.mskcc.cbio.portal.util;
 
+import org.apache.logging.log4j.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Monitors Progress of Long Term Tasks.
@@ -51,7 +50,7 @@ public class ProgressMonitor {
     private int curValue;
     private String currentMessage;
     private StringBuffer log = new StringBuffer();
-    private static Logger logger = LoggerFactory.getLogger(ProgressMonitor.class);
+    private static org.apache.logging.log4j.Logger logger = org.apache.logging.log4j.LogManager.getLogger(ProgressMonitor.class);
     private boolean consoleMode;
     private boolean showProgress;
     private TreeSet<String> warnings = new TreeSet<>();
@@ -220,7 +219,7 @@ public class ProgressMonitor {
     }
 
     public static void logWarning(String warning) {
-        logger.warn(warning);
+        logger.log(Level.WARN, warning);
         if (isRunningOnServer())
             return;
         progressMonitor.warnings.add(warning);
@@ -231,7 +230,7 @@ public class ProgressMonitor {
     }
 
     public static void logDebug(String debugMessage) {
-        logger.debug(debugMessage);
+        logger.log(Level.DEBUG, debugMessage);
         if (isShowProgress())
         	progressMonitor.debugMessages.add(debugMessage);
     }

@@ -22,8 +22,8 @@
 
 package org.mskcc.cbio.portal.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 
 /**
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  *
  */
 public class ServerDetector {
-    private static final Logger logger = LoggerFactory.getLogger(ServerDetector.class);
+    private static final Logger logger = LogManager.getLogger(ServerDetector.class);
     private static boolean isInstanceInitialized = false;
     private static ServerDetector instance = new ServerDetector();
 

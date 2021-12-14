@@ -27,7 +27,15 @@
     <repository>
       <id>spring-milestones</id>
       <name>Spring Milestones</name>
-      <url>http://repo.spring.io/milestone</url>
+      <url>https://repo.spring.io/milestone</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>alfresco</id>
+      <name>Alfresco</name>
+      <url>https://artifacts.alfresco.com/nexus/content/repositories/public/</url>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
@@ -46,6 +54,7 @@
 
   <profiles>
     <profile>
+      <id>public</id>
       <activation>
         <activeByDefault>true</activeByDefault>
       </activation>
@@ -57,7 +66,7 @@
           <plugin>
             <groupId>com.github.cbioportal.maven-external-version</groupId>
             <artifactId>maven-external-version-plugin</artifactId>
-            <version>f09c2b9608</version>
+            <version>f09c2b9608744881111f24e55d55a91e54e6cb5f</version>
             <extensions>true</extensions>
             <configuration>
               <strategy hint="script">
@@ -123,25 +132,22 @@
                 </goals>
                 <configuration>
                   <target>
-                    <taskdef resource="net/sf/antcontrib/antlib.xml" classpathref="maven.dependency.classpath"/>
+                    <taskdef resource="net/sf/antcontrib/antlib.xml" classpathref="maven.dependency.classpath" />
                     <if>
                       <not>
-                        <available file="${basedir}/src/main/resources/portal.properties"/>
+                        <available file="${basedir}/src/main/resources/portal.properties" />
                       </not>
                       <then>
-                        <copy file="${basedir}/src/main/resources/portal.properties.EXAMPLE" tofile="${basedir}/src/main/resources/portal.properties"/>
+                        <copy file="${basedir}/src/main/resources/portal.properties.EXAMPLE" tofile="${basedir}/src/main/resources/portal.properties" />
                       </then>
                     </if>
                     <if>
                       <not>
-                        <available file="${basedir}/src/main/resources/logback.xml"/>
+                        <available file="${basedir}/src/main/resources/log4j.properties" />
                       </not>
                       <then>
-                        <copy file="${basedir}/src/main/resources/logback.xml.EXAMPLE" tofile="${basedir}/portal/src/main/webapp/WEB-INF/logback.xml"/>
+                        <copy file="${basedir}/src/main/resources/log4j.properties.EXAMPLE" tofile="${basedir}/src/main/resources/log4j.properties" />
                       </then>
-                      <else>
-                        <copy file="${basedir}/src/main/resources/logback.xml" tofile="${basedir}/portal/src/main/webapp/WEB-INF/logback.xml"/>
-                      </else>
                     </if>
                   </target>
                 </configuration>
@@ -284,18 +290,15 @@
   </profiles>
 
   <properties>
-    <frontend.version>v5.4.7</frontend.version>
+    <frontend.version>145c70c11099f5b415dd9f89e768288c16250841</frontend.version>
     <frontend.groupId>com.github.cbioportal</frontend.groupId>
-    <spring.version>5.2.20.RELEASE</spring.version>
+    <spring.version>5.2.6.RELEASE</spring.version>
     <spring.integration.version>5.3.0.RELEASE</spring.integration.version>
     <spring.security.version>5.3.1.RELEASE</spring.security.version>
     <spring.social.version>1.1.6.RELEASE</spring.social.version>
-    <jackson.version>2.13.0</jackson.version>
+    <jackson.version>2.12.1</jackson.version>
     <mysql-connector.version>5.1.48</mysql-connector.version>
     <webapp-runner.version>8.5.61.0</webapp-runner.version>
-    <slf4j.version>1.7.32</slf4j.version>
-    <logback.version>1.2.10</logback.version>
-    <springfox.version>3.0.0</springfox.version>
 
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -313,7 +316,7 @@
 
     <db.test.driver>com.mysql.jdbc.Driver</db.test.driver>
     <!-- For MySQL < 5.5 change 'default_storage_engine' to 'storage_engine' -->
-    <db.test.url>jdbc:mysql://127.0.0.1:3306/cgds_test?useSSL=false&amp;sessionVariables=default_storage_engine=InnoDB&amp;allowLoadLocalInfile=true&amp;allowPublicKeyRetrieval=true</db.test.url>
+    <db.test.url>jdbc:mysql://127.0.0.1:3306/cgds_test?sessionVariables=default_storage_engine=InnoDB</db.test.url>
     <db.test.username>cbio_user</db.test.username>
     <db.test.password>somepassword</db.test.password>
 
@@ -322,13 +325,11 @@
     <tomcat.session.timeout>720</tomcat.session.timeout>
 
     <!-- THIS SHOULD BE KEPT IN SYNC TO VERSION IN CGDS.SQL -->
-    <db.version>2.13.1</db.version>
+    <db.version>2.12.8</db.version>
   </properties>
 
   <modules>
     <module>portal</module>
-<!-- TODO: the frontend probably needs adjustment. At the very least, the portal API has changed to include the isGermline field, so the public and internal API projects need to be updated and rebuilt (a script does this) -->
-<!-- TODO: the frontend also need to have the "germline" indicator be added to the table showing structural variants ... like the indicator on mutation records which are germline -->
     <module>core</module>
     <module>web</module>
     <module>model</module>
@@ -337,31 +338,7 @@
     <module>scripts</module>
     <module>db-scripts</module>
     <module>security</module>
-    <module>utils</module>
-    <module>maf</module>
   </modules>
-
-  <dependencies>
-      <!--logging implementation shared by modules-->
-      <dependency>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-api</artifactId>
-      </dependency>
-      <dependency>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-core</artifactId>
-      </dependency>
-      <dependency>
-          <groupId>ch.qos.logback</groupId>
-          <artifactId>logback-classic</artifactId>
-      </dependency>
-      <dependency>
-          <groupId>pl.pragmatists</groupId>
-          <artifactId>JUnitParams</artifactId>
-          <version>1.1.0</version>
-          <scope>test</scope>
-      </dependency>
-  </dependencies>
 
   <dependencyManagement>
     <dependencies>
@@ -433,25 +410,39 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.mskcc.cbio</groupId>
-        <artifactId>permission-evaluator</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.mongodb</groupId>
-        <artifactId>mongo-java-driver</artifactId>
-        <version>3.12.9</version>
-      </dependency>
-      <dependency>
-        <groupId>org.mskcc.cbio</groupId>
-        <artifactId>utils</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
         <groupId>com.github.cbioportal</groupId>
         <artifactId>session-service</artifactId>
-        <classifier>model</classifier>
-        <version>v0.5.0</version>
+        <version>0.3.0</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger2</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-swagger-ui</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
 
       <!-- external dependencies -->
@@ -470,7 +461,7 @@
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-text</artifactId>
-        <version>1.10.0</version>
+        <version>1.9</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -590,25 +581,19 @@
       <dependency>
         <groupId>org.mybatis</groupId>
         <artifactId>mybatis</artifactId>
-        <version>3.5.7</version>
+        <version>3.5.6</version>
       </dependency>
       <!-- slf4j -->
       <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-to-slf4j</artifactId>
+        <version>2.16.0</version>
+      </dependency>
+      <dependency>
         <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-log4j12</artifactId>
+        <artifactId>slf4j-api</artifactId>
         <version>1.7.32</version>
       </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-core</artifactId>
-        <version>${logback.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>${logback.version}</version>
-      </dependency>
-
       <!-- spring -->
       <dependency>
         <groupId>org.springframework</groupId>
@@ -818,7 +803,7 @@
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-core</artifactId>
-        <version>2.15.0</version>
+        <version>2.16.0</version>
       </dependency>
       <!-- junit -->
       <dependency>
@@ -910,23 +895,18 @@
       </dependency>
       <dependency>
         <groupId>io.springfox</groupId>
+        <artifactId>springfox-swagger2</artifactId>
+        <version>2.9.2</version>
+      </dependency>
+      <dependency>
+        <groupId>io.springfox</groupId>
+        <artifactId>springfox-swagger-ui</artifactId>
+        <version>2.9.2</version>
+      </dependency>
+      <dependency>
+        <groupId>io.springfox</groupId>
         <artifactId>springfox-bean-validators</artifactId>
-        <version>${springfox.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.springfox</groupId>
-        <artifactId>springfox-boot-starter</artifactId>
-        <version>${springfox.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.springfox</groupId>
-        <artifactId>springfox-oas</artifactId>
-        <version>${springfox.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.springfox</groupId>
-        <artifactId>springfox-spring-web</artifactId>
-        <version>${springfox.version}</version>
+        <version>2.9.2</version>
       </dependency>
       <dependency>
         <groupId>org.mapstruct</groupId>
@@ -993,6 +973,44 @@
         <groupId>net.sf.opencsv</groupId>
         <artifactId>opencsv</artifactId>
         <version>2.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.biojava</groupId>
+        <artifactId>biojava-core</artifactId>
+        <version>4.2.0</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.biojava</groupId>
+        <artifactId>biojava-structure</artifactId>
+        <version>4.2.0</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>batik</groupId>
@@ -1098,7 +1116,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.8.1</version>
+          <version>3.5.1</version>
           <configuration>
             <source>1.8</source>
             <target>1.8</target>
@@ -1135,7 +1153,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-war-plugin</artifactId>
-          <version>3.3.1</version>
+          <version>2.2</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -1208,7 +1226,7 @@
                     </goals>
                   </pluginExecutionFilter>
                   <action>
-                    <ignore/>
+                    <ignore />
                   </action>
                 </pluginExecution>
               </pluginExecutions>
