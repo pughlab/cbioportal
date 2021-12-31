@@ -52,7 +52,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.inference.TestUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONValue;
@@ -71,7 +72,7 @@ import org.mskcc.cbio.portal.web_api.GetProteinArrayData;
  * @author jj
  */
 public class ProteinArraySignificanceTestJSON extends HttpServlet {
-    private static Logger logger = Logger.getLogger(ProteinArraySignificanceTestJSON.class);
+    private static Logger logger = LogManager.getLogger(ProteinArraySignificanceTestJSON.class);
 
 	// class which process access control to cancer studies
 	private AccessControl accessControl;
