@@ -3,7 +3,7 @@ package org.cbioportal.web.mixin;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class DiscreteCopyNumberDataMixin {
-    
-   @JsonProperty("namespaceColumns")
+
+    @JsonProperty("namespaceColumns")
     private String annotationJson;
 }
