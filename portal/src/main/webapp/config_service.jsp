@@ -45,6 +45,7 @@
             "oncoprint.hide_vus.default",
             "mycancergenome.show",
             "oncokb.public_api.url",
+            "oncokb.merge_icons_by_default",
             "digitalslidearchive.iframe.url",
             "digitalslidearchive.meta.url",
             "mdacc.heatmap.meta.url",
@@ -58,13 +59,18 @@
             "priority_studies",
             "show.hotspot",
             "show.oncokb",
+            "show.cbioportal",
+            "show.cosmic",
             "show.civic",
             "show.genomenexus",
             "show.genomenexus.annotation_sources",
+            "genomenexus.isoform_override_source",
             "show.mutation_mappert_tool.grch38",
             "show.transcript_dropdown",
             "show.signal",
+            "show.ndex",
             "survival.show_p_q_values_in_survival_type_table",
+            "survival.min_group_threshold",
             "survival.initial_x_axis_limit",
             "skin.documentation.about",
             "skin.documentation.baseurl",
@@ -78,6 +84,7 @@
             "skin.examples_right_column_html",
             "skin.documentation.faq",
             "skin.footer",
+            "skin.footer_show_dev",
             "skin.login.contact_html",
             "skin.login.saml.registration_html",
             "skin.documentation.news",
@@ -89,6 +96,7 @@
             "skin.right_nav.show_examples",
             "skin.right_nav.show_testimonials",
             "skin.right_nav.show_whats_new",
+            "skin.right_nav.show_twitter",
             "skin.right_nav.whats_new_blurb",
             "skin.show_about_tab",
             "skin.show_data_tab",
@@ -101,6 +109,10 @@
             "skin.show_tweet_button",
             "skin.patientview.filter_genes_profiled_all_samples",
             "skin.patientview.show_mskcc_slide_viewer",
+            "skin.home_page.show_unauthorized_studies",
+            "skin.home_page.unauthorized_studies_global_message",
+            "skin.show_settings_menu",
+            "skin.hide_logout_button",
             "quick_search.enabled",
             "default_cross_cancer_study_session_id",
             "default_cross_cancer_study_list",
@@ -113,13 +125,26 @@
             "bitly.user",
             "bitly.access.token",
             "oncoprint.custom_driver_annotation.tiers.default",
+            "oncoprint.clinical_tracks.config_json",
             "ensembl.transcript_url",
             "enable_persistent_cache",
             "enable_request_body_gzip_compression",
+            "enable_treatment_groups",
             "query_product_limit",
-            "skin.show_gsva",
+            "clinical_attribute_product_limit",
             "saml.logout.local",
-            "skin.citation_rule_text"
+            "skin.citation_rule_text",
+            "skin.show_gsva",
+            "skin.geneset_hierarchy.default_p_value",
+            "skin.geneset_hierarchy.default_gsva_score",
+            "skin.geneset_hierarchy.collapse_by_default",
+            "skin.mutation_table.namespace_column.show_by_default",
+            "skin.patient_view.mutation_table.columns.show_on_init",
+            "skin.results_view.mutation_table.columns.show_on_init",
+            "skin.patient_view.copy_number_table.columns.show_on_init",
+            "skin.patient_view.structural_variant_table.columns.show_on_init",
+            "comparison.categorical_na_values",
+            "skin.hide_download_controls"
         };
 
 
@@ -151,6 +176,8 @@
         obj.put("user_email_address",GlobalProperties.getAuthenticatedUserName());
 
         obj.put("frontendConfigOverride",GlobalProperties.getFrontendConfig());
+
+        obj.put("oncoprint_clinical_tracks_config_json",GlobalProperties.getOncoprintClinicalTracksConfigJson());
 
         obj.put("authenticationMethod",GlobalProperties.authenticationMethod());
 

@@ -3,8 +3,8 @@ package org.cbioportal.web.util;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.map.MultiKeyMap;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.cbioportal.model.ClinicalData;
 import org.cbioportal.model.ClinicalDataBin;
 import org.cbioportal.model.ClinicalDataCount;
@@ -13,17 +13,16 @@ import org.cbioportal.model.DataBin;
 import org.cbioportal.model.MolecularProfile;
 import org.cbioportal.model.Patient;
 import org.cbioportal.model.SampleList;
-import org.cbioportal.web.parameter.ClinicalDataBinFilter;
-import org.cbioportal.web.parameter.ClinicalDataFilter;
-import org.cbioportal.web.parameter.CustomDataSession;
-import org.cbioportal.web.parameter.CustomDataValue;
-import org.cbioportal.web.parameter.DataFilterValue;
-import org.cbioportal.web.parameter.SampleIdentifier;
-import org.cbioportal.web.parameter.StudyViewFilter;
+import org.cbioportal.service.util.MolecularProfileUtil;
+import org.cbioportal.web.parameter.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class StudyViewFilterUtil {
+    @Autowired
+    private MolecularProfileUtil molecularProfileUtil;
+    
     public void extractStudyAndSampleIds(List<SampleIdentifier> sampleIdentifiers, List<String> studyIds, List<String> sampleIds) {
         for (SampleIdentifier sampleIdentifier : sampleIdentifiers) {
             studyIds.add(sampleIdentifier.getStudyId());
@@ -37,6 +36,11 @@ public class StudyViewFilterUtil {
         }
     }
 
+    public void removeSelfFromGenericAssayFilter(String stableId, StudyViewFilter studyViewFilter) {
+        if (studyViewFilter!= null && studyViewFilter.getGenericAssayDataFilters() != null) {
+            studyViewFilter.getGenericAssayDataFilters().removeIf(f -> f.getStableId().equals(stableId));
+        }
+    }
 
     public void removeSelfCustomDataFromFilter(String attributeId, StudyViewFilter studyViewFilter) {
         if (studyViewFilter!= null && studyViewFilter.getCustomDataFilters() != null) {
@@ -50,6 +54,10 @@ public class StudyViewFilterUtil {
 
     public String getGenomicDataFilterUniqueKey(String hugoGeneSymbol, String profileType) {
         return hugoGeneSymbol + profileType;
+    }
+
+    public String getGenericAssayDataFilterUniqueKey(String stableId, String profileType) {
+        return stableId + profileType;
     }
 
     public ClinicalDataBin dataBinToClinicalDataBin(ClinicalDataBinFilter attribute, DataBin dataBin) {

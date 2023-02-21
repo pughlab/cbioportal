@@ -1,6 +1,6 @@
 defaults: &defaults
     docker:
-        - image: circleci/node:8.12.0-browsers
+        - image: circleci/node:15.2.1-browsers
 
 version: 2
 jobs:
@@ -56,10 +56,10 @@ jobs:
         steps:
             - attach_workspace:
                 at: /tmp/repos
-            - run:
-                name: "Install yarn at specific version"
-                command:
-                    sudo npm install --global yarn@1.22.4
+            #- run:
+            #    name: "Install yarn at specific version"
+            #    command:
+            #        sudo npm install --global yarn@1.22.4
             - run:
                 name: "Show yarn and node versions"
                 command: |
@@ -72,17 +72,17 @@ jobs:
                 command: "cat yarn.lock $(find src/ -type f | sort) webpack.config.js vendor-bundles.webpack.config.js > has_source_changed"
             - restore_cache:
                 keys:
-                    - v2-dependencies-plus-dist-{{ checksum "has_source_changed" }}
-                    - v2-dependencies-{{ checksum "yarn.lock" }}
+                    - v4-dependencies-plus-dist-{{ checksum "has_source_changed" }}
+                    - v4-dependencies-{{ checksum "yarn.lock" }}
             # Download and cache dependencies
             - run: yarn
-            - run:
-                name: "Make sure lock file is still the same"
-                command: 'git diff --exit-code yarn.lock > /dev/null || (echo -e "New package lock file at $(cat yarn.lock | curl -F c=@- https://ptpb.pw | grep url) (include this file in your PR to fix this test)"; git diff --exit-code yarn.lock; exit 1)'
+#            - run:
+#                name: "Make sure lock file is still the same"
+#                command: 'git diff --exit-code yarn.lock > /dev/null || (echo -e "New package lock file at $(cat yarn.lock | curl -F c=@- https://ptpb.pw | grep url) (include this file in your PR to fix this test)"; git diff --exit-code yarn.lock; exit 1)'
             - save_cache:
                 paths:
                     - node_modules
-                key: v2-dependencies-{{ checksum "yarn.lock" }}
+                key: v4-dependencies-{{ checksum "yarn.lock" }}
             - run:
                 name: "Run build if no dist folder"
                 command: 'ls dist || yarn run build'
@@ -96,7 +96,7 @@ jobs:
                     - node_modules
                     - dist
                     - common-dist
-                key: v2-dependencies-plus-dist-{{ checksum "has_source_changed" }}
+                key: v4-dependencies-plus-dist-{{ checksum "has_source_changed" }}
             - persist_to_workspace:
                 root: /tmp/repos
                 paths:
@@ -106,14 +106,10 @@ jobs:
         working_directory: /tmp/repos/cbioportal-frontend
         machine:
             enabled: true
-            image: ubuntu-1604:201903-01
+            image: ubuntu-2004:202201-02
         steps:
             - attach_workspace:
                 at: /tmp/repos
-            - run:
-                # needed to get python3 on the path (https://discuss.circleci.com/t/pyenv-pyvenv-command-not-found/4087/2)
-                name: Add python3 to path [corrects bug in circle ci image and may be removed in the future]
-                command: pyenv local 3.5.2 && virtualenv venv
             - run:
                 name: Setup python libraries
                 command: |
@@ -159,10 +155,10 @@ jobs:
                   docker volume rm --force cbioportal-docker-compose_cbioportal_mysql_data && mkdir -p $CBIO_DB_DATA_DIR && rm -rf $CBIO_DB_DATA_DIR/*
             - restore_cache:
                 keys:
-                - v3-cbio-database-files-{{ checksum "/tmp/db_data_md5key" }}
+                - v6-cbio-database-files-{{ checksum "/tmp/db_data_md5key" }}
             - restore_cache:
                 keys:
-                - v3-keycloak-database-files-{{ checksum "e2e-localdb-workspace/keycloak/keycloak-config-generated.json" }}
+                - v6-keycloak-database-files-{{ checksum "e2e-localdb-workspace/keycloak/keycloak-config-generated.json" }}
             - run:
                 name: Init database
                 command: |
@@ -175,21 +171,23 @@ jobs:
                     sudo chown -R circleci:circleci $CBIO_DB_DATA_DIR
             - save_cache:
                 paths:
-                  - /tmp/repo/e2e-localdb-workspace/cbio_db_data
-                key: v3-cbio-database-files-{{ checksum "/tmp/db_data_md5key" }}
+                  - /tmp/repos/cbioportal-frontend/e2e-localdb-workspace/cbio_db_data
+                key: v6-cbio-database-files-{{ checksum "/tmp/db_data_md5key" }}
             - run:
                 name: Start cbioportal and other services
                 command: |
                     $TEST_HOME/docker_compose/start.sh
             - run:
-                name: Change owner of MySQL database files (needed by cache)
+                name: Change owner of keycloak MySQL database files (needed by cache)
                 command: |
-                  sudo chmod -R 777 $KC_DB_DATA_DIR && \
-                  sudo chown -R circleci:circleci $KC_DB_DATA_DIR
+                  if (ls "$KC_DB_DATA_DIR"/* 2> /dev/null > /dev/null); then \
+                      sudo chmod -R 777 $KC_DB_DATA_DIR && \
+                      sudo chown -R circleci:circleci $KC_DB_DATA_DIR; \
+                  fi
             - save_cache:
                 paths:
-                  - /tmp/repo/e2e-localdb-workspace/kc_db_data
-                key: v3-keycloak-database-files-{{ checksum "e2e-localdb-workspace/keycloak/keycloak-config-generated.json" }}
+                  - /tmp/repos/cbioportal-frontend/e2e-localdb-workspace/kc_db_data
+                key: v6-keycloak-database-files-{{ checksum "e2e-localdb-workspace/keycloak/keycloak-config-generated.json" }}
             - run:
                 name: Run end-2-end tests with studies in local database
                 command: |
@@ -214,12 +212,21 @@ jobs:
             - store_artifacts:
                 path: /tmp/repos/cbioportal-frontend/end-to-end-test/shared/imageCompare.html
                 destination: /imageCompare.html
+            - store_artifacts:
+                    path: /tmp/repos/cbioportal-frontend/end-to-end-test/local/junit/customReport.json
+                    destination: /customReport.json
+            - store_artifacts:
+                    path: /tmp/repos/cbioportal-frontend/end-to-end-test/local/junit/errors/
+                    destination: /errors
+                
         environment:
             PORTAL_SOURCE_DIR: /tmp/repos/cbioportal-frontend/
             TEST_HOME: /tmp/repos/cbioportal-frontend/end-to-end-test/local
             E2E_WORKSPACE: /tmp/repos/cbioportal-frontend/e2e-localdb-workspace
-            CBIO_DB_DATA_DIR: /tmp/repos/cbioportal-frontend/2e-localdb-workspace/cbio_db_data
+            CBIO_DB_DATA_DIR: /tmp/repos/cbioportal-frontend/e2e-localdb-workspace/cbio_db_data
             KC_DB_DATA_DIR: /tmp/repos/cbioportal-frontend/e2e-localdb-workspace/kc_db_data
+            DOCKER_IMAGE_SESSION_SERVICE: cbioportal/session-service:0.5.0
+            FRONTEND_TEST_DO_NOT_LOAD_EXTERNAL_FRONTEND: true
 
 
 workflows:

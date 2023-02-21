@@ -1,9 +1,11 @@
 package org.cbioportal.service.impl;
 
-import org.apache.commons.collections.map.MultiKeyMap;
+import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.commons.lang3.StringUtils;
 import org.cbioportal.model.*;
 import org.cbioportal.model.util.Select;
 import org.cbioportal.service.*;
+import org.cbioportal.service.exception.MolecularProfileNotFoundException;
 import org.cbioportal.service.exception.StudyNotFoundException;
 import org.cbioportal.service.util.MolecularProfileUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,22 +30,29 @@ public class StudyViewServiceImpl implements StudyViewService {
     private SignificantlyMutatedGeneService significantlyMutatedGeneService;
     @Autowired
     private SignificantCopyNumberRegionService significantCopyNumberRegionService;
+    @Autowired
+    private GenericAssayService genericAssayService;
 
     @Override
     public List<GenomicDataCount> getGenomicDataCounts(List<String> studyIds, List<String> sampleIds) {
         List<MolecularProfileCaseIdentifier> molecularProfileSampleIdentifiers =
             molecularProfileService.getMolecularProfileCaseIdentifiers(studyIds, sampleIds);
 
-        Map<String, Integer> molecularProfileSampleCountSet = genePanelService
+        List<MolecularProfile> molecularProfiles = molecularProfileService
+            .getMolecularProfilesInStudies(new ArrayList<>(new HashSet<>(studyIds)),"SUMMARY");
+        Map<String, MolecularProfile> molecularProfileMap = molecularProfiles
+            .stream()
+            .collect(Collectors.toMap(MolecularProfile::getStableId, Function.identity()));
+
+        Map<String, Integer> molecularProfileCaseCountSet = genePanelService
             .fetchGenePanelDataInMultipleMolecularProfiles(molecularProfileSampleIdentifiers)
             .stream()
             .filter(GenePanelData::getProfiled)
-            .collect(Collectors.groupingBy(GenePanelData::getMolecularProfileId, Collectors.summingInt(s -> 1)));
-
-        List<MolecularProfile> molecularProfiles =
-            molecularProfileService.getMolecularProfilesInStudies(new ArrayList<>(new HashSet<>(studyIds)),
-                "SUMMARY");
-
+            .collect(Collectors.groupingBy(GenePanelData::getMolecularProfileId))
+            .entrySet()
+            .stream()
+            .collect(Collectors.toMap(entry -> entry.getKey(), entry -> (int)entry.getValue().stream().map(d -> molecularProfileMap.get(entry.getKey()).getPatientLevel() ? d.getPatientId() : d.getSampleId()).distinct().count()));
+        
         return molecularProfileUtil
             .categorizeMolecularProfilesByStableIdSuffixes(molecularProfiles)
             .entrySet()
@@ -55,8 +64,7 @@ public class StudyViewServiceImpl implements StudyViewService {
                 Integer count = entry
                     .getValue()
                     .stream()
-                    .mapToInt(molecularProfile ->
-                        molecularProfileSampleCountSet.getOrDefault(molecularProfile.getStableId(), 0))
+                    .mapToInt(molecularProfile -> molecularProfileCaseCountSet.getOrDefault(molecularProfile.getStableId(), 0))
                     .sum();
 
                 dataCount.setCount(count);
@@ -68,7 +76,9 @@ public class StudyViewServiceImpl implements StudyViewService {
     }
 
     @Override
-    public List<AlterationCountByGene> getMutationAlterationCountByGenes(List<String> studyIds, List<String> sampleIds)
+    public List<AlterationCountByGene> getMutationAlterationCountByGenes(List<String> studyIds,
+                                                                         List<String> sampleIds,
+                                                                         AlterationFilter alterationFilter)
         throws StudyNotFoundException {
         List<MolecularProfileCaseIdentifier> caseIdentifiers =
             molecularProfileService.getFirstMutationProfileCaseIdentifiers(studyIds, sampleIds);
@@ -77,13 +87,15 @@ public class StudyViewServiceImpl implements StudyViewService {
             Select.all(),
             true,
             false,
-            Select.all()).getFirst();
+            alterationFilter).getFirst();
         annotateDataWithQValue(studyIds, alterationCountByGenes);
         return alterationCountByGenes;
     }
 
     @Override
-    public List<AlterationCountByGene> getStructuralVariantAlterationCountByGenes(List<String> studyIds, List<String> sampleIds)
+    public List<AlterationCountByGene> getStructuralVariantAlterationCountByGenes(List<String> studyIds,
+                                                                                  List<String> sampleIds,
+                                                                                  AlterationFilter alterationFilter)
         throws StudyNotFoundException {
         List<MolecularProfileCaseIdentifier> caseIdentifiers =
             molecularProfileService.getFirstStructuralVariantProfileCaseIdentifiers(studyIds, sampleIds);
@@ -91,7 +103,8 @@ public class StudyViewServiceImpl implements StudyViewService {
             caseIdentifiers,
             Select.all(),
             true,
-            false).getFirst();
+            false,
+            alterationFilter).getFirst();
         annotateDataWithQValue(studyIds, alterationCountByGenes);
         return alterationCountByGenes;
     }
@@ -119,7 +132,9 @@ public class StudyViewServiceImpl implements StudyViewService {
     }
 
     @Override
-    public List<CopyNumberCountByGene> getCNAAlterationCountByGenes(List<String> studyIds, List<String> sampleIds)
+    public List<CopyNumberCountByGene> getCNAAlterationCountByGenes(List<String> studyIds,
+                                                                    List<String> sampleIds,
+                                                                    AlterationFilter alterationFilter)
         throws StudyNotFoundException {
         List<MolecularProfileCaseIdentifier> caseIdentifiers =
             molecularProfileService.getFirstDiscreteCNAProfileCaseIdentifiers(studyIds, sampleIds);
@@ -129,7 +144,7 @@ public class StudyViewServiceImpl implements StudyViewService {
             Select.all(),
             true,
             false,
-            cnaTypes).getFirst();
+            alterationFilter).getFirst();
         Set<String> distinctStudyIds = new HashSet<>(studyIds);
         if (distinctStudyIds.size() == 1 && !copyNumberCountByGenes.isEmpty()) {
             List<Gistic> gisticList = significantCopyNumberRegionService.getSignificantCopyNumberRegions(
@@ -155,4 +170,79 @@ public class StudyViewServiceImpl implements StudyViewService {
         return copyNumberCountByGenes;
     }
 
+    @Override
+    public List<GenericAssayDataCountItem> fetchGenericAssayDataCounts(List<String> sampleIds, List<String> studyIds,
+                                                               List<String> stableIds, List<String> profileTypes) {
+        if (stableIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Get data from fetchGenericAssayData service
+        List<MolecularProfile> molecularProfiles = molecularProfileService.getMolecularProfilesInStudies(studyIds,
+            "SUMMARY");
+
+        Map<String, List<MolecularProfile>> molecularProfileMap = molecularProfileUtil
+            .categorizeMolecularProfilesByStableIdSuffixes(molecularProfiles);
+
+        List<GenericAssayData> data = profileTypes.stream().flatMap(profileType -> {
+            // We need to create a map for mapping from studyId to profileId
+            Map<String, String> studyIdToMolecularProfileIdMap = molecularProfileMap
+                .getOrDefault(profileType, new ArrayList<>())
+                .stream().collect(Collectors.toMap(MolecularProfile::getCancerStudyIdentifier,
+                    MolecularProfile::getStableId));
+
+            List<String> mappedSampleIds = new ArrayList<>();
+            List<String> mappedProfileIds = new ArrayList<>();
+
+            for (int i = 0; i < sampleIds.size(); i++) {
+                String studyId = studyIds.get(i);
+                if (studyIdToMolecularProfileIdMap.containsKey(studyId)) {
+                    mappedSampleIds.add(sampleIds.get(i));
+                    mappedProfileIds.add(studyIdToMolecularProfileIdMap.get(studyId));
+                }
+            }
+
+            try {
+                return genericAssayService.fetchGenericAssayData(mappedProfileIds, mappedSampleIds, stableIds, "SUMMARY").stream();
+            } catch (MolecularProfileNotFoundException e) {
+                return new ArrayList<GenericAssayData>().stream();
+            }
+        }).collect(Collectors.toList());
+        
+        return data
+            .stream()
+            .filter(g -> StringUtils.isNotEmpty(g.getValue()) && !g.getValue().equals("NA"))
+            .collect(Collectors.groupingBy(GenericAssayData::getGenericAssayStableId))
+            .entrySet()
+            .stream()
+            .map(entry -> {
+                int totalCount = entry.getValue().size();
+                int naCount = sampleIds.size() - totalCount;
+                List<GenericAssayDataCount> counts = entry.getValue()
+                    .stream()
+                    .collect(Collectors.groupingBy(GenericAssayData::getValue))
+                    .entrySet()
+                    .stream()
+                    .map(datum -> {
+                        GenericAssayDataCount dataCount = new GenericAssayDataCount();
+                        dataCount.setValue(datum.getKey());
+                        dataCount.setCount(datum.getValue().size());
+                        return dataCount; 
+                    })
+                    .collect(Collectors.toList());
+                
+                if (naCount > 0) {
+                    GenericAssayDataCount dataCount = new GenericAssayDataCount();
+                    dataCount.setValue("NA");
+                    dataCount.setCount(naCount);
+                    counts.add(dataCount);
+                }
+
+                GenericAssayDataCountItem genericAssayDataCountItem = new GenericAssayDataCountItem();
+                genericAssayDataCountItem.setStableId(entry.getKey());
+                genericAssayDataCountItem.setCounts(counts);
+                return genericAssayDataCountItem;
+            })
+            .collect(Collectors.toList());
+    }
 }

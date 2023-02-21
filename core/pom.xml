@@ -130,44 +130,6 @@
       <artifactId>opencsv</artifactId>
     </dependency>
 
-    <!-- BioJava 4.x -->
-    <dependency>
-      <groupId>org.biojava</groupId>
-      <artifactId>biojava-core</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-slf4j-impl</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-api</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-core</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.biojava</groupId>
-      <artifactId>biojava-structure</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-slf4j-impl</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-api</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.logging.log4j</groupId>
-          <artifactId>log4j-core</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
     <!-- Mockito -->
     <dependency>
       <groupId>org.mockito</groupId>
@@ -234,12 +196,13 @@
       <artifactId>hrrs-servlet-filter-base64</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-    </dependency>
-    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.mskcc.cbio</groupId>
+      <artifactId>maf</artifactId>
+      <version>0-unknown-version-SNAPSHOT</version>
     </dependency>
   </dependencies>
 
@@ -318,7 +281,7 @@
               <url>${db.test.url}</url>
               <username>${db.test.username}</username>
               <password>${db.test.password}</password>
-              <sqlCommand>SET storage_engine=INNODB</sqlCommand>
+              <sqlCommand>SET default_storage_engine=InnoDB</sqlCommand>
               <sqlCommand>SET SESSION sql_mode = 'ANSI_QUOTES'</sqlCommand>
               <srcFiles>
                 <srcFile>${project.build.testOutputDirectory}/cgds-test.sql</srcFile>
@@ -347,6 +310,13 @@
             <configuration>
               <outputDirectory>${project.build.directory}/classes</outputDirectory>
               <resources>
+                  <resource>
+                      <directory>${project.parent.basedir}/portal/src/main/webapp/WEB-INF</directory>
+                      <filtering>true</filtering>
+                      <includes>
+                          <include>logback.xml</include>
+                      </includes>
+                  </resource>
                 <resource>
                   <directory>${project.parent.basedir}/src/main/resources</directory>
                   <includes>
@@ -354,7 +324,6 @@
                   </includes>
                   <excludes>
                     <exclude>**/portal.properties.*</exclude>
-                    <exclude>**/log4j.properties.*</exclude>
                     <exclude>**/maven.properties.*</exclude>
                     <exclude>**/git.properties.*</exclude>
                     <exclude>**/*.EXAMPLE</exclude>

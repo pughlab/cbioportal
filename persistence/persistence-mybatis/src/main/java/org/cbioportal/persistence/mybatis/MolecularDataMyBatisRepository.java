@@ -1,9 +1,6 @@
 package org.cbioportal.persistence.mybatis;
 
-import org.cbioportal.model.GeneMolecularAlteration;
-import org.cbioportal.model.GenericAssayMolecularAlteration;
-import org.cbioportal.model.GenesetMolecularAlteration;
-import org.cbioportal.model.MolecularProfileSamples;
+import org.cbioportal.model.*;
 import org.cbioportal.persistence.MolecularDataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -54,6 +51,12 @@ public class MolecularDataMyBatisRepository implements MolecularDataRepository {
     }
 
     @Override
+    public Iterable<GeneMolecularAlteration> getGeneMolecularAlterationsIterableFast(String molecularProfileId) {
+
+        return molecularDataMapper.getGeneMolecularAlterationsIterFast(molecularProfileId);
+    }
+
+    @Override
     public List<GeneMolecularAlteration> getGeneMolecularAlterationsInMultipleMolecularProfiles(Set<String> molecularProfileIds, 
                                                                                                 List<Integer> entrezGeneIds, 
                                                                                                 String projection) {
@@ -62,7 +65,7 @@ public class MolecularDataMyBatisRepository implements MolecularDataRepository {
                 projection);
 	}
 
-	@Override
+    @Override
 	public List<GenesetMolecularAlteration> getGenesetMolecularAlterations(String molecularProfileId, 
                                                                            List<String> genesetIds, String projection) {
 

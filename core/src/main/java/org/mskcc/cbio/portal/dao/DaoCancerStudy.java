@@ -34,7 +34,6 @@ package org.mskcc.cbio.portal.dao;
 
 import java.sql.*;
 import java.text.*;
-import java.time.LocalDate;
 import java.util.*;
 import org.apache.commons.lang3.StringUtils;
 import org.mskcc.cbio.portal.model.*;
@@ -298,7 +297,7 @@ public final class DaoCancerStudy {
             pstmt = con.prepareStatement("INSERT INTO cancer_study " +
                     "( `CANCER_STUDY_IDENTIFIER`, `NAME`, "
                     + "`DESCRIPTION`, `PUBLIC`, `TYPE_OF_CANCER_ID`, "
-                    + "`PMID`, `CITATION`, `GROUPS`, `SHORT_NAME`, `STATUS`, `IMPORT_DATE`,`REFERENCE_GENOME_ID` ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    + "`PMID`, `CITATION`, `GROUPS`, `STATUS`,`REFERENCE_GENOME_ID`, `IMPORT_DATE` ) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())",
                     Statement.RETURN_GENERATED_KEYS);
             pstmt.setString(1, stableId);
             pstmt.setString(2, cancerStudy.getName());
@@ -313,15 +312,13 @@ public final class DaoCancerStudy {
             } else {
                 pstmt.setString(8, StringUtils.join(groups, ";"));
             }
-            pstmt.setString(9, cancerStudy.getShortName());
             //status is UNAVAILABLE until other data is loaded for this study. Once all is loaded, the
             //data loading process can set this to AVAILABLE:
             //TODO - use this field in parts of the system that build up the list of studies to display in home page:
-            pstmt.setInt(10, Status.UNAVAILABLE.ordinal());
-            pstmt.setDate(11, java.sql.Date.valueOf(LocalDate.now()));
+            pstmt.setInt(9, Status.UNAVAILABLE.ordinal());
             try {
                 ReferenceGenome referenceGenome = DaoReferenceGenome.getReferenceGenomeByGenomeName(cancerStudy.getReferenceGenome());
-                pstmt.setInt(12, referenceGenome.getReferenceGenomeId());
+                pstmt.setInt(10, referenceGenome.getReferenceGenomeId());
             }
             catch (NullPointerException e) {
                 throw new DaoException("Unsupported reference genome");
@@ -556,8 +553,6 @@ public final class DaoCancerStudy {
                 "DELETE FROM resource_sample WHERE INTERNAL_ID IN (SELECT INTERNAL_ID FROM sample WHERE PATIENT_ID IN (SELECT INTERNAL_ID FROM patient WHERE CANCER_STUDY_ID=?))",
                 "DELETE FROM copy_number_seg WHERE CANCER_STUDY_ID=?",
                 "DELETE FROM copy_number_seg_file WHERE CANCER_STUDY_ID=?",
-                "DELETE FROM protein_array_data WHERE CANCER_STUDY_ID=?",
-                "DELETE FROM protein_array_cancer_study WHERE CANCER_STUDY_ID=?",
                 "DELETE FROM sample WHERE PATIENT_ID IN (SELECT INTERNAL_ID FROM patient WHERE CANCER_STUDY_ID=?)",
                 "DELETE FROM clinical_patient WHERE INTERNAL_ID IN (SELECT INTERNAL_ID FROM patient WHERE CANCER_STUDY_ID=?)",
                 "DELETE FROM resource_patient WHERE INTERNAL_ID IN (SELECT INTERNAL_ID FROM patient WHERE CANCER_STUDY_ID=?)",
@@ -575,10 +570,9 @@ public final class DaoCancerStudy {
         PreparedStatement pstmt = null;
         ResultSet rs = null;
         try {
-            // check whether should delete generic assay meta
-            if (DaoGenericAssay.geneticEntitiesOnlyExistInSingleStudy(internalCancerStudyId)) {
-                deleteGenericAssayMeta(internalCancerStudyId);
-            }
+            // check whether should delete generic assay meta profile by profile
+            DaoGenericAssay.checkAndDeleteGenericAssayMetaInStudy(internalCancerStudyId);
+            
             con = JdbcUtil.getDbConnection(DaoCancerStudy.class);
             for (String statementString : deleteStudyStatements) {
                 pstmt = con.prepareStatement(statementString);
@@ -626,35 +620,6 @@ public final class DaoCancerStudy {
     }
 
     /**
-     * delete generic assay meta records if meta is not shared with other studies
-     * @throws DaoException
-     */
-    public static void deleteGenericAssayMeta(int internalCancerStudyId) throws DaoException {
-        String[] deleteGenericAssayStatements = {
-                "DELETE FROM generic_entity_properties WHERE GENETIC_ENTITY_ID IN (SELECT GENETIC_ENTITY_ID FROM genetic_alteration WHERE GENETIC_PROFILE_ID IN (SELECT GENETIC_PROFILE_ID FROM genetic_profile WHERE CANCER_STUDY_ID=?))",
-                "DELETE FROM genetic_entity WHERE ID IN (SELECT GENETIC_ENTITY_ID FROM genetic_alteration WHERE GENETIC_PROFILE_ID IN (SELECT GENETIC_PROFILE_ID FROM genetic_profile WHERE CANCER_STUDY_ID=? AND GENETIC_ALTERATION_TYPE='GENERIC_ASSAY'))"
-                };
-        Connection con = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-        try {
-            con = JdbcUtil.getDbConnection(DaoCancerStudy.class);
-            for (String statementString : deleteGenericAssayStatements) {
-                pstmt = con.prepareStatement(statementString);
-                if (statementString.contains("?")) {
-                    pstmt.setInt(1, internalCancerStudyId);
-                }
-                pstmt.executeUpdate();
-                pstmt.close();
-            }
-        } catch (SQLException e) {
-            throw new DaoException(e);
-        } finally {
-            JdbcUtil.closeAll(DaoCancerStudy.class, con, pstmt, rs);
-        }
-    }
-
-    /**
      * Extracts Cancer Study JDBC Results.
      */
     private static CancerStudy extractCancerStudy(ResultSet rs) throws DaoException {
@@ -667,7 +632,6 @@ public final class DaoCancerStudy {
             cancerStudy.setPmid(rs.getString("PMID"));
             cancerStudy.setCitation(rs.getString("CITATION"));
             cancerStudy.setGroupsInUpperCase(rs.getString("GROUPS"));
-            cancerStudy.setShortName(rs.getString("SHORT_NAME"));
             cancerStudy.setInternalId(rs.getInt("CANCER_STUDY_ID"));
             cancerStudy.setImportDate(rs.getDate("IMPORT_DATE"));
             cancerStudy.setReferenceGenome(DaoReferenceGenome.getReferenceGenomeByInternalId(

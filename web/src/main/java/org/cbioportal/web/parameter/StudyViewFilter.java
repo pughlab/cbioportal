@@ -7,10 +7,11 @@ import java.util.Objects;
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Size;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.cbioportal.model.AlterationFilter;
+import org.cbioportal.model.GeneFilter;
 import org.cbioportal.web.parameter.filter.*;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -24,13 +25,18 @@ public class StudyViewFilter implements Serializable {
     private List<ClinicalDataFilter> clinicalDataFilters;
     private List<GeneFilter> geneFilters;
     private AndedSampleTreatmentFilters sampleTreatmentFilters;
+    private AndedSampleTreatmentFilters sampleTreatmentGroupFilters;
+    private AndedSampleTreatmentFilters sampleTreatmentTargetFilters;
     private AndedPatientTreatmentFilters patientTreatmentFilters;
+    private AndedPatientTreatmentFilters patientTreatmentGroupFilters;
+    private AndedPatientTreatmentFilters patientTreatmentTargetFilters;
 	private List<List<String>> genomicProfiles;
     private List<GenomicDataFilter> genomicDataFilters;
     private List<GenericAssayDataFilter> genericAssayDataFilters;
     private List<List<String>> caseLists;
     private List<ClinicalDataFilter> customDataFilters;
-
+    private AlterationFilter alterationFilter;
+    
     @AssertTrue
     private boolean isEitherSampleIdentifiersOrStudyIdsPresent() {
         return sampleIdentifiers != null ^ studyIds != null;
@@ -158,4 +164,43 @@ public class StudyViewFilter implements Serializable {
         this.customDataFilters = customDataFilters;
     }
 
+    public AlterationFilter getAlterationFilter() {
+        return alterationFilter;
+    }
+
+    public void setAlterationFilter(AlterationFilter alterationFilter) {
+        this.alterationFilter = alterationFilter;
+    }
+
+    public AndedSampleTreatmentFilters getSampleTreatmentGroupFilters() {
+        return sampleTreatmentGroupFilters;
+    }
+
+    public void setSampleTreatmentGroupFilters(AndedSampleTreatmentFilters sampleTreatmentGroupFilters) {
+        this.sampleTreatmentGroupFilters = sampleTreatmentGroupFilters;
+    }
+
+    public AndedPatientTreatmentFilters getPatientTreatmentGroupFilters() {
+        return patientTreatmentGroupFilters;
+    }
+
+    public void setPatientTreatmentGroupFilters(AndedPatientTreatmentFilters patientTreatmentGroupFilters) {
+        this.patientTreatmentGroupFilters = patientTreatmentGroupFilters;
+    }
+
+    public AndedSampleTreatmentFilters getSampleTreatmentTargetFilters() {
+        return sampleTreatmentTargetFilters;
+    }
+
+    public void setSampleTreatmentTargetFilters(AndedSampleTreatmentFilters sampleTreatmentTargetFilters) {
+        this.sampleTreatmentTargetFilters = sampleTreatmentTargetFilters;
+    }
+
+    public AndedPatientTreatmentFilters getPatientTreatmentTargetFilters() {
+        return patientTreatmentTargetFilters;
+    }
+
+    public void setPatientTreatmentTargetFilters(AndedPatientTreatmentFilters patientTreatmentTagetFilters) {
+        this.patientTreatmentTargetFilters = patientTreatmentTagetFilters;
+    }
 }

@@ -39,6 +39,9 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
     private SignificantlyMutatedGeneService significantlyMutatedGeneService;
     @Mock
     private SignificantCopyNumberRegionService significantCopyNumberRegionService;
+    @Mock
+    private GenericAssayService genericAssayService;
+    private AlterationFilter alterationFilter = new AlterationFilter();
 
     @Test
     public void getGenomicDataCounts() throws Exception {
@@ -50,6 +53,7 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
         mutationMolecularProfile.setName("Mutations");
         mutationMolecularProfile.setMolecularAlterationType(MolecularProfile.MolecularAlterationType.MUTATION_EXTENDED);
         mutationMolecularProfile.setDatatype("MAF");
+        mutationMolecularProfile.setPatientLevel(false);
         molecularProfiles.add(mutationMolecularProfile);
 
         MolecularProfile discreteCNAMolecularProfile = new MolecularProfile();
@@ -58,7 +62,17 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
         discreteCNAMolecularProfile.setName("Discrete CNA");
         discreteCNAMolecularProfile.setMolecularAlterationType(MolecularProfile.MolecularAlterationType.COPY_NUMBER_ALTERATION);
         discreteCNAMolecularProfile.setDatatype("DISCRETE");
+        discreteCNAMolecularProfile.setPatientLevel(false);
         molecularProfiles.add(discreteCNAMolecularProfile);
+
+        MolecularProfile patientLevelMolecularProfile = new MolecularProfile();
+        patientLevelMolecularProfile.setCancerStudyIdentifier(BaseServiceImplTest.STUDY_ID);
+        patientLevelMolecularProfile.setStableId(BaseServiceImplTest.STUDY_ID + "_patient");
+        patientLevelMolecularProfile.setName("Patient Profile");
+        patientLevelMolecularProfile.setMolecularAlterationType(MolecularProfile.MolecularAlterationType.GENERIC_ASSAY);
+        patientLevelMolecularProfile.setDatatype("LIMIT-VALUE");
+        patientLevelMolecularProfile.setPatientLevel(true);
+        molecularProfiles.add(patientLevelMolecularProfile);        
 
         List<String> studyIds = Arrays.asList(BaseServiceImplTest.STUDY_ID, BaseServiceImplTest.STUDY_ID);
         List<String> sampleIds = Arrays.asList(BaseServiceImplTest.SAMPLE_ID1, BaseServiceImplTest.SAMPLE_ID2);
@@ -68,6 +82,8 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
         molecularProfileSampleIdentifiers.add(new MolecularProfileCaseIdentifier(BaseServiceImplTest.SAMPLE_ID2, BaseServiceImplTest.STUDY_ID + "_mutations"));
         molecularProfileSampleIdentifiers.add(new MolecularProfileCaseIdentifier(BaseServiceImplTest.SAMPLE_ID1, BaseServiceImplTest.STUDY_ID + "_gistic"));
         molecularProfileSampleIdentifiers.add(new MolecularProfileCaseIdentifier(BaseServiceImplTest.SAMPLE_ID2, BaseServiceImplTest.STUDY_ID + "_gistic"));
+        molecularProfileSampleIdentifiers.add(new MolecularProfileCaseIdentifier(BaseServiceImplTest.SAMPLE_ID1, BaseServiceImplTest.STUDY_ID + "_patient"));
+        molecularProfileSampleIdentifiers.add(new MolecularProfileCaseIdentifier(BaseServiceImplTest.SAMPLE_ID2, BaseServiceImplTest.STUDY_ID + "_patient"));
 
         List<GenePanelData> genePanelDataList = new ArrayList<>();
         GenePanelData panelData1 = new GenePanelData();
@@ -90,6 +106,18 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
         panelData4.setSampleId(BaseServiceImplTest.SAMPLE_ID2);
         panelData4.setProfiled(true);
         genePanelDataList.add(panelData4);
+        GenePanelData panelData5 = new GenePanelData();
+        panelData5.setMolecularProfileId(BaseServiceImplTest.STUDY_ID + "_patient");
+        panelData5.setSampleId(BaseServiceImplTest.SAMPLE_ID1);
+        panelData5.setPatientId(BaseServiceImplTest.PATIENT_ID_1);
+        panelData5.setProfiled(true);
+        genePanelDataList.add(panelData5);
+        GenePanelData panelData6 = new GenePanelData();
+        panelData6.setMolecularProfileId(BaseServiceImplTest.STUDY_ID + "_patient");
+        panelData6.setSampleId(BaseServiceImplTest.SAMPLE_ID2);
+        panelData6.setPatientId(BaseServiceImplTest.PATIENT_ID_1);
+        panelData6.setProfiled(true);
+        genePanelDataList.add(panelData6);
 
         Mockito.when(molecularProfileService.getMolecularProfilesInStudies(anyList(), anyString()))
             .thenReturn(molecularProfiles);
@@ -105,11 +133,16 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
         expectedGenomicDataCount1.setValue("mutations");
         expectedGenomicDataCount1.setLabel("Mutations");
         expectedGenomicDataCounts.add(expectedGenomicDataCount1);
-        GenomicDataCount expectedGenomicDataCoun2 = new GenomicDataCount();
-        expectedGenomicDataCoun2.setCount(2);
-        expectedGenomicDataCoun2.setValue("gistic");
-        expectedGenomicDataCoun2.setLabel("Discrete CNA");
-        expectedGenomicDataCounts.add(expectedGenomicDataCoun2);
+        GenomicDataCount expectedGenomicDataCount2 = new GenomicDataCount();
+        expectedGenomicDataCount2.setCount(1);
+        expectedGenomicDataCount2.setValue("patient");
+        expectedGenomicDataCount2.setLabel("Patient Profile");
+        expectedGenomicDataCounts.add(expectedGenomicDataCount2);
+        GenomicDataCount expectedGenomicDataCount3 = new GenomicDataCount();
+        expectedGenomicDataCount3.setCount(2);
+        expectedGenomicDataCount3.setValue("gistic");
+        expectedGenomicDataCount3.setLabel("Discrete CNA");
+        expectedGenomicDataCounts.add(expectedGenomicDataCount3);
 
         List<GenomicDataCount> result = studyViewService.getGenomicDataCounts(studyIds, sampleIds);
 
@@ -145,9 +178,9 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
             Select.all(),
             true,
             false,
-            Select.all()))
+            alterationFilter))
             .thenReturn(new Pair<>(alterationCountByGenes, 2L));
-        List<AlterationCountByGene> result = studyViewService.getMutationAlterationCountByGenes(studyIds, sampleIds);
+        List<AlterationCountByGene> result = studyViewService.getMutationAlterationCountByGenes(studyIds, sampleIds, alterationFilter);
         Assert.assertEquals(1, result.size());
     }
 
@@ -179,9 +212,10 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
             molecularProfileCaseIdentifiers,
             Select.all(),
             true,
-            false))
+            false,
+            alterationFilter))
             .thenReturn(new Pair<>(alterationCountByGenes, 2L));
-        List<AlterationCountByGene> result = studyViewService.getStructuralVariantAlterationCountByGenes(studyIds, sampleIds);
+        List<AlterationCountByGene> result = studyViewService.getStructuralVariantAlterationCountByGenes(studyIds, sampleIds, alterationFilter);
         Assert.assertEquals(1, result.size());
     }
 
@@ -216,8 +250,112 @@ public class StudyViewServiceImplTest extends BaseServiceImplTest {
             any(Select.class),
             anyBoolean(),
             anyBoolean(),
-            any(Select.class))).thenReturn(new Pair<>(alterationCountByGenes, 2L));
-        List<CopyNumberCountByGene> result = studyViewService.getCNAAlterationCountByGenes(studyIds, sampleIds);
+            any(AlterationFilter.class))).thenReturn(new Pair<>(alterationCountByGenes, 2L));
+        List<CopyNumberCountByGene> result = studyViewService.getCNAAlterationCountByGenes(studyIds, sampleIds, alterationFilter);
         Assert.assertEquals(1, result.size());
+    }
+
+    @Test
+    public void fetchGenericAssayDataCounts() throws Exception {
+
+        List<String> stableIds = Arrays.asList(BaseServiceImplTest.STABLE_ID_1, BaseServiceImplTest.STABLE_ID_2);
+        List<String> molecularProfileIds = Collections.nCopies(3, BaseServiceImplTest.STUDY_ID + "_" + BaseServiceImplTest.MOLECULAR_PROFILE_ID_A);
+        List<String> sampleIds = Arrays.asList(BaseServiceImplTest.SAMPLE_ID1, BaseServiceImplTest.SAMPLE_ID2, BaseServiceImplTest.SAMPLE_ID3);
+        List<String> studyIds = Collections.nCopies(3, BaseServiceImplTest.STUDY_ID);
+        List<String> profileTypes = Arrays.asList(BaseServiceImplTest.MOLECULAR_PROFILE_ID_A);
+
+        List<GenericAssayData> gaDataList = new ArrayList<>();
+        GenericAssayData gaData1 = new GenericAssayData();
+        gaData1.setGenericAssayStableId(BaseServiceImplTest.STABLE_ID_1);
+        gaData1.setSampleId(BaseServiceImplTest.SAMPLE_ID1);
+        gaData1.setValue(BaseServiceImplTest.CATEGORY_VALUE_1);
+        gaDataList.add(gaData1);
+
+        GenericAssayData gaData2 = new GenericAssayData();
+        gaData2.setGenericAssayStableId(BaseServiceImplTest.STABLE_ID_1);
+        gaData2.setSampleId(BaseServiceImplTest.SAMPLE_ID2);
+        gaData2.setValue(BaseServiceImplTest.CATEGORY_VALUE_1);
+        gaDataList.add(gaData2);
+
+        GenericAssayData gaData3 = new GenericAssayData();
+        gaData3.setGenericAssayStableId(BaseServiceImplTest.STABLE_ID_1);
+        gaData3.setSampleId(BaseServiceImplTest.SAMPLE_ID3);
+        gaData3.setValue(BaseServiceImplTest.CATEGORY_VALUE_2);
+        gaDataList.add(gaData3);
+
+        GenericAssayData gaData4 = new GenericAssayData();
+        gaData4.setGenericAssayStableId(BaseServiceImplTest.STABLE_ID_2);
+        gaData4.setSampleId(BaseServiceImplTest.SAMPLE_ID1);
+        gaData4.setValue(BaseServiceImplTest.CATEGORY_VALUE_1);
+        gaDataList.add(gaData4);
+
+        GenericAssayData gaData5 = new GenericAssayData();
+        gaData5.setGenericAssayStableId(BaseServiceImplTest.STABLE_ID_2);
+        gaData5.setSampleId(BaseServiceImplTest.SAMPLE_ID2);
+        gaData5.setValue(BaseServiceImplTest.EMPTY_VALUE_1);
+        gaDataList.add(gaData5);
+
+        GenericAssayData gaData6 = new GenericAssayData();
+        gaData6.setGenericAssayStableId(BaseServiceImplTest.STABLE_ID_2);
+        gaData6.setSampleId(BaseServiceImplTest.SAMPLE_ID3);
+        gaData6.setValue(BaseServiceImplTest.EMPTY_VALUE_2);
+        gaDataList.add(gaData6);
+
+        Mockito.when(genericAssayService.fetchGenericAssayData(molecularProfileIds, sampleIds, stableIds, "SUMMARY"))
+            .thenReturn(gaDataList);
+
+        List<MolecularProfile> molecularProfiles = new ArrayList<>();
+        MolecularProfile molecularProfile = new MolecularProfile();
+        molecularProfile.setCancerStudyIdentifier(BaseServiceImplTest.STUDY_ID);
+        molecularProfile.setStableId(BaseServiceImplTest.STUDY_ID + "_" + BaseServiceImplTest.MOLECULAR_PROFILE_ID_A);
+        molecularProfiles.add(molecularProfile);
+        
+        Mockito.when(molecularProfileService.getMolecularProfilesInStudies(studyIds, "SUMMARY"))
+            .thenReturn(molecularProfiles);
+
+        List<GenericAssayDataCountItem> expectedCountItems = new ArrayList<>();
+        GenericAssayDataCountItem countItem1 = new GenericAssayDataCountItem();
+        countItem1.setStableId(BaseServiceImplTest.STABLE_ID_1);
+        GenericAssayDataCount count1 = new GenericAssayDataCount();
+        count1.setValue(BaseServiceImplTest.CATEGORY_VALUE_1);
+        count1.setCount(2);
+        GenericAssayDataCount count2 = new GenericAssayDataCount();
+        count2.setValue(BaseServiceImplTest.CATEGORY_VALUE_2);
+        count2.setCount(1);       
+        countItem1.setCounts(Arrays.asList(count1, count2));
+        expectedCountItems.add(countItem1);
+
+        GenericAssayDataCountItem countItem2 = new GenericAssayDataCountItem();
+        countItem2.setStableId(BaseServiceImplTest.STABLE_ID_2);
+        GenericAssayDataCount count3 = new GenericAssayDataCount();
+        count3.setValue(BaseServiceImplTest.CATEGORY_VALUE_1);
+        count3.setCount(1);
+        GenericAssayDataCount count4 = new GenericAssayDataCount();
+        count4.setValue("NA");
+        count4.setCount(2);
+        countItem2.setCounts(Arrays.asList(count3, count4));
+        expectedCountItems.add(countItem2);
+        
+        List<GenericAssayDataCountItem> result = studyViewService.fetchGenericAssayDataCounts(sampleIds, studyIds, stableIds, profileTypes);
+
+        Assert.assertEquals(2, result.size());
+
+        GenericAssayDataCountItem item1 = result.get(0);
+        Assert.assertEquals(BaseServiceImplTest.STABLE_ID_1, item1.getStableId());
+        GenericAssayDataCount countInItem1 = item1.getCounts().get(0);
+        Assert.assertEquals(BaseServiceImplTest.CATEGORY_VALUE_1, countInItem1.getValue());
+        Assert.assertEquals((Integer) 2, countInItem1.getCount());
+        GenericAssayDataCount countInItem2 = item1.getCounts().get(1);
+        Assert.assertEquals(BaseServiceImplTest.CATEGORY_VALUE_2, countInItem2.getValue());
+        Assert.assertEquals((Integer) 1, countInItem2.getCount());
+
+        GenericAssayDataCountItem item2 = result.get(1);
+        Assert.assertEquals(BaseServiceImplTest.STABLE_ID_2, item2.getStableId());
+        GenericAssayDataCount countInItem3 = item2.getCounts().get(0);
+        Assert.assertEquals(BaseServiceImplTest.CATEGORY_VALUE_1, countInItem3.getValue());
+        Assert.assertEquals((Integer) 1, countInItem3.getCount());
+        GenericAssayDataCount countInItem4 = item2.getCounts().get(1);
+        Assert.assertEquals(BaseServiceImplTest.EMPTY_VALUE_2, countInItem4.getValue());
+        Assert.assertEquals((Integer) 2, countInItem4.getCount());
     }
 }

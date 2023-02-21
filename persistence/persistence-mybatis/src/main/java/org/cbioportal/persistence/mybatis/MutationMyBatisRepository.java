@@ -1,8 +1,8 @@
 package org.cbioportal.persistence.mybatis;
 
+import org.cbioportal.model.GeneFilterQuery;
 import org.cbioportal.model.Mutation;
 import org.cbioportal.model.MutationCountByPosition;
-import org.cbioportal.model.MutationCountByGene;
 import org.cbioportal.model.meta.MutationMeta;
 import org.cbioportal.persistence.MutationRepository;
 import org.cbioportal.persistence.mybatis.util.MolecularProfileCaseIdentifierUtil;
@@ -42,16 +42,18 @@ public class MutationMyBatisRepository implements MutationRepository {
     }
 
     @Override
-    public List<Mutation> getMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds, 
-                                                                  List<String> sampleIds, List<Integer> entrezGeneIds, 
-                                                                  String projection, Integer pageSize, 
+    public List<Mutation> getMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds,
+                                                                  List<String> sampleIds, List<Integer> entrezGeneIds,
+                                                                  String projection, Integer pageSize,
                                                                   Integer pageNumber, String sortBy, String direction) {
 
-        return molecularProfileCaseIdentifierUtil.getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
+        return molecularProfileCaseIdentifierUtil
+            .getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
             .entrySet()
             .stream()
-            .flatMap(entry -> mutationMapper.getMutationsBySampleIds(entry.getKey(),
-                entry.getValue(),
+            .flatMap(entry -> mutationMapper.getMutationsInMultipleMolecularProfiles(
+                Arrays.asList(entry.getKey()),
+                new ArrayList<>(entry.getValue()),
                 entrezGeneIds,
                 null,
                 projection,
@@ -63,8 +65,37 @@ public class MutationMyBatisRepository implements MutationRepository {
     }
 
     @Override
+    public List<Mutation> getMutationsInMultipleMolecularProfilesByGeneQueries(List<String> molecularProfileIds,
+                                                                               List<String> sampleIds,
+                                                                               List<GeneFilterQuery> geneQueries,
+                                                                               String projection,
+                                                                               Integer pageSize,
+                                                                               Integer pageNumber,
+                                                                               String sortBy,
+                                                                               String direction) {
+        if (geneQueries.isEmpty())
+            return Collections.emptyList();
+
+        return molecularProfileCaseIdentifierUtil
+            .getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
+            .entrySet()
+            .stream()
+            .flatMap(entry -> mutationMapper.getMutationsInMultipleMolecularProfilesByGeneQueries(
+                Arrays.asList(entry.getKey()),
+                new ArrayList<>(entry.getValue()),
+                null,
+                projection,
+                pageSize,
+                offsetCalculator.calculate(pageSize, pageNumber),
+                sortBy,
+                direction,
+                geneQueries).stream())
+            .collect(Collectors.toList());
+    }
+
+    @Override
     public MutationMeta getMetaMutationsInMultipleMolecularProfiles(List<String> molecularProfileIds,
-                                                                    List<String> sampleIds, 
+                                                                    List<String> sampleIds,
                                                                     List<Integer> entrezGeneIds) {
 
         return mutationMapper.getMetaMutationsInMultipleMolecularProfiles(molecularProfileIds, sampleIds, entrezGeneIds,
@@ -77,8 +108,16 @@ public class MutationMyBatisRepository implements MutationRepository {
                                                            String projection, Integer pageSize, Integer pageNumber,
                                                            String sortBy, String direction) {
 
-        return mutationMapper.getMutationsBySampleIds(molecularProfileId, new HashSet<>(sampleIds), entrezGeneIds, snpOnly, projection,
-            pageSize, offsetCalculator.calculate(pageSize, pageNumber), sortBy, direction);
+        return mutationMapper.getMutationsInMultipleMolecularProfiles(
+            Arrays.asList(molecularProfileId),
+            new ArrayList<>(sampleIds),
+            entrezGeneIds,
+            snpOnly,
+            projection,
+            pageSize,
+            offsetCalculator.calculate(pageSize, pageNumber),
+            sortBy,
+            direction);
     }
 
     @Override
@@ -94,29 +133,5 @@ public class MutationMyBatisRepository implements MutationRepository {
 
         return mutationMapper.getMutationCountByPosition(entrezGeneId, proteinPosStart, proteinPosEnd);
     }
-
-    // TODO: cleanup once fusion/structural data is fixed in database
-    @Override
-    public List<Mutation> getFusionsInMultipleMolecularProfiles(List<String> molecularProfileIds,
-            List<String> sampleIds, List<Integer> entrezGeneIds, String projection, Integer pageSize,
-            Integer pageNumber, String sortBy, String direction) {
-
-        return molecularProfileCaseIdentifierUtil
-            .getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
-            .entrySet()
-            .stream()
-            .flatMap(entry -> mutationMapper.getFusionsInMultipleMolecularProfiles(
-                Arrays.asList(entry.getKey()),
-                new ArrayList<>(entry.getValue()),
-                entrezGeneIds,
-                null,
-                projection,
-                pageSize,
-                offsetCalculator.calculate(pageSize, pageNumber),
-                sortBy,
-                direction).stream())
-            .collect(Collectors.toList());
-    }
-    // TODO: cleanup once fusion/structural data is fixed in database
 
 }

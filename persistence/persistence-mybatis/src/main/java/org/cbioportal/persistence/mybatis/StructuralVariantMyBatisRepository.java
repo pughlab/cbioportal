@@ -23,16 +23,19 @@
 
 package org.cbioportal.persistence.mybatis;
 
+import org.cbioportal.model.GeneFilterQuery;
 import org.cbioportal.model.StructuralVariant;
+import org.cbioportal.model.StructuralVariantQuery;
 import org.cbioportal.persistence.StructuralVariantRepository;
 import org.cbioportal.persistence.mybatis.util.MolecularProfileCaseIdentifierUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static java.util.Arrays.asList;
 
 @Repository
 public class StructuralVariantMyBatisRepository implements StructuralVariantRepository {
@@ -45,14 +48,31 @@ public class StructuralVariantMyBatisRepository implements StructuralVariantRepo
     @Override
     public List<StructuralVariant> fetchStructuralVariants(List<String> molecularProfileIds,
                                                            List<String> sampleIds,
-                                                           List<Integer> entrezGeneIds) {
-
+                                                           List<Integer> entrezGeneIds,
+                                                           List<StructuralVariantQuery> structuralVariantQueries) {
+        if (molecularProfileIds == null || molecularProfileIds.isEmpty()) {
+            return new ArrayList<>();
+        }
         return molecularProfileCaseIdentifierUtil.getGroupedCasesByMolecularProfileId(molecularProfileIds, sampleIds)
             .entrySet()
             .stream()
-            .flatMap(entry ->structuralVariantMapper
-                .fetchStructuralVariants(Arrays.asList(entry.getKey()), new ArrayList<>(entry.getValue()), entrezGeneIds)
-                .stream())
+            .flatMap(entry ->
+                structuralVariantMapper
+                    .fetchStructuralVariants(
+                        asList(entry.getKey()),
+                        new ArrayList<>(entry.getValue()),
+                        entrezGeneIds,
+                        structuralVariantQueries
+                    )
+                    .stream()
+            )
             .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<StructuralVariant> fetchStructuralVariantsByGeneQueries(List<String>  molecularProfileIds,
+                                                                        List<String> sampleIds,
+                                                                        List<GeneFilterQuery> geneQueries) {
+        return structuralVariantMapper.fetchStructuralVariantsByGeneQueries(molecularProfileIds, sampleIds, geneQueries);
     }
 }

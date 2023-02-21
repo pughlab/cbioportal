@@ -21,7 +21,10 @@ VERSION_FIELD = 'DB_SCHEMA_VERSION'
 REQUIRED_PROPERTIES = [DATABASE_HOST, DATABASE_NAME, DATABASE_USER, DATABASE_PW, DATABASE_USE_SSL]
 ALLOWABLE_GENOME_REFERENCES = ['37', 'hg19', 'GRCh37', '38', 'hg38', 'GRCh38', 'mm10', 'GRCm38']
 DEFAULT_GENOME_REFERENCE = 'hg19'
-MULTI_REFERENCE_GENOME_SUPPORT_MIGRATION_STEP = (2,11,0)
+MULTI_REFERENCE_GENOME_SUPPORT_MIGRATION_STEP = (2, 11, 0)
+GENERIC_ASSAY_MIGRATION_STEP = (2, 12, 1)
+SAMPLE_FK_MIGRATION_STEP = (2, 12, 9)
+FUSIONS_VERBOTEN_STEP = (2, 12, 14)
 
 class PortalProperties(object):
     """ Properties object class, just has fields for db conn """
@@ -145,6 +148,10 @@ def is_version_larger(version1, version2):
         return True
     return False
 
+def is_version_equal(version1, version2):
+    """ Checks if version 1 is equal to version 2"""
+    return version1[0] == version2[0] and version1[1] == version2[1] and version1[2] == version2[2]
+
 def print_all_check_reference_genome_warnings(warnings, force_migration):
     """ Format warnings for output according to mode, and print to ERROR_FILE """
     space =  ' '
@@ -203,11 +210,124 @@ def check_reference_genome(portal_properties, cursor, force_migration):
         if not force_migration:
             sys.exit(1)
 
+def check_and_exit_if_fusions(cursor):
+    try:
+        cursor.execute(
+            """
+                SELECT COUNT(*)
+                FROM mutation_event
+                WHERE MUTATION_TYPE = "Fusion";
+            """)
+        fusion_count = cursor.fetchone()
+        if (fusion_count[0] >= 1):
+            print('Found %i records in the mutation_event table where the mutation_type was "Fusion". The latest database schema does not allow records in the mutation table where mutation_type is set to "Fusion". Studies linked to existing records of this type should be deleted in order to migrate to DB version 2.12.14' % (fusion_count), file=ERROR_FILE)
+            # get the list of studies that need to be cleaned up
+            cursor.execute(
+                """
+                    SELECT cancer_study.CANCER_STUDY_IDENTIFIER, COUNT(mutation.MUTATION_EVENT_ID)
+                    FROM cancer_study,
+                        genetic_profile
+                    LEFT JOIN mutation ON genetic_profile.GENETIC_PROFILE_ID = mutation.GENETIC_PROFILE_ID
+                    LEFT JOIN mutation_event ON mutation.MUTATION_EVENT_ID = mutation_event.MUTATION_EVENT_ID
+                    WHERE 
+                        genetic_profile.CANCER_STUDY_ID = cancer_study.CANCER_STUDY_ID
+                        AND mutation_event.MUTATION_TYPE = "Fusion"
+                    GROUP BY cancer_study.CANCER_STUDY_IDENTIFIER
+                    HAVING count(mutation.MUTATION_EVENT_ID) > 0
+                """)
+            rows = cursor.fetchall()
+            print("The following studies have fusions in the mutation_event table:", file=ERROR_FILE)
+            for row in rows:
+                print("\t%s" % (row[0]), file=ERROR_FILE)
+            sys.exit(1)
+    
+    except MySQLdb.Error as msg:
+        print(msg, file=ERROR_FILE)
+        sys.exit(1)
+
+# TODO: remove this after we update mysql version
+def check_and_remove_invalid_foreign_keys(cursor):
+    try:
+        # if genetic_alteration_ibfk_2 exists
+        cursor.execute(
+            """
+                SELECT *
+                FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                    WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
+                    AND TABLE_SCHEMA = DATABASE()
+                    AND CONSTRAINT_NAME = 'genetic_alteration_ibfk_2'
+            """)
+        rows = cursor.fetchall()
+        if (len(rows) >= 1):
+            # if genetic_alteration_fk_2 also exists, delete it
+            cursor.execute(
+                """
+                    SELECT *
+                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                        WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
+                        AND TABLE_SCHEMA = DATABASE()
+                        AND CONSTRAINT_NAME = 'genetic_alteration_fk_2'
+                """)
+            rows = cursor.fetchall()
+            if (len(rows) >= 1):
+                print('Invalid foreign key found.', file=OUTPUT_FILE)
+                cursor.execute(
+                    """
+                        ALTER TABLE `genetic_alteration` DROP FOREIGN KEY genetic_alteration_fk_2;
+                    """)
+                print('Invalid foreign key has been deleted.', file=OUTPUT_FILE)
+    except MySQLdb.Error as msg:
+        print(msg, file=ERROR_FILE)
+        sys.exit(1)
+
+def check_and_remove_type_of_cancer_id_foreign_key(cursor):
+    """The TYPE_OF_CANCER_ID foreign key in the sample table can be either sample_ibfk_1 or sample_ibfk_2. Figure out which one it is and remove it"""
+    try:
+        # if sample_ibfk_1 exists
+        cursor.execute(
+            """
+                SELECT *
+                FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+                    WHERE CONSTRAINT_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'sample'
+                    AND REFERENCED_TABLE_NAME = 'type_of_cancer'
+                    AND CONSTRAINT_NAME = 'sample_ibfk_1'
+            """)
+        rows = cursor.fetchall()
+        if (len(rows) >= 1):
+            print('sample_ibfk_1 is the foreign key in table sample for type_of_cancer_id column in table type_of_cancer.', file=OUTPUT_FILE)
+            cursor.execute(
+                """
+                    ALTER TABLE `sample` DROP FOREIGN KEY sample_ibfk_1;
+                """)
+            print('sample_ibfk_1 foreign key has been deleted.', file=OUTPUT_FILE)
+        # if sample_ibfk_2 exists
+        cursor.execute(
+            """
+                SELECT *
+                FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+                    WHERE CONSTRAINT_SCHEMA = DATABASE()
+                    AND TABLE_NAME = 'sample'
+                    AND REFERENCED_TABLE_NAME = 'type_of_cancer'
+                    AND CONSTRAINT_NAME = 'sample_ibfk_2'
+            """)
+        rows = cursor.fetchall()
+        if (len(rows) >= 1):
+            print('sample_ibfk_2 is the foreign key in table sample for type_of_cancer_id column in table type_of_cancer.', file=OUTPUT_FILE)
+            cursor.execute(
+                """
+                    ALTER TABLE `sample` DROP FOREIGN KEY sample_ibfk_2;
+                """)
+            print('sample_ibfk_2 foreign key has been deleted.', file=OUTPUT_FILE)                  
+    except MySQLdb.Error as msg:
+        print(msg, file=ERROR_FILE)
+        sys.exit(1)
+
 def strip_trailing_comment_from_line(line):
     line_parts = re.split("--\s",line)
     return line_parts[0]
 
-def run_migration(db_version, sql_filename, connection, cursor, no_transaction):
+def run_migration(db_version, sql_filename, connection, cursor, no_transaction, stop_at_version=None):
     """
         Goes through the sql and runs lines based on the version numbers. SQL version should be stated as follows:
 
@@ -225,8 +345,12 @@ def run_migration(db_version, sql_filename, connection, cursor, no_transaction):
     for line in sql_file:
         if line.startswith('##'):
             sql_version = tuple(map(int, line.split(':')[1].strip().split('.')))
-            run_line = is_version_larger(sql_version, db_version)
-            continue
+            # stop at the version specified
+            if stop_at_version is not None and is_version_equal(sql_version, stop_at_version):
+                break
+            else:
+                run_line = is_version_larger(sql_version, db_version)
+                continue
         # skip blank lines
         if len(line.strip()) < 1:
             continue
@@ -340,9 +464,23 @@ def main():
     with contextlib.closing(connection):
         db_version = get_db_version(cursor)
         if is_version_larger(MULTI_REFERENCE_GENOME_SUPPORT_MIGRATION_STEP, db_version):
+            run_migration(db_version, sql_filename, connection, cursor, parser.no_transaction, stop_at_version=MULTI_REFERENCE_GENOME_SUPPORT_MIGRATION_STEP)
             #retrieve reference genomes from database
             check_reference_genome(portal_properties, cursor, parser.force)
+            db_version = get_db_version(cursor)
+        if is_version_larger(SAMPLE_FK_MIGRATION_STEP, db_version):
+            run_migration(db_version, sql_filename, connection, cursor, parser.no_transaction, stop_at_version=SAMPLE_FK_MIGRATION_STEP)
+            check_and_remove_type_of_cancer_id_foreign_key(cursor)
+            db_version = get_db_version(cursor)
+        if is_version_larger(FUSIONS_VERBOTEN_STEP, db_version):
+            run_migration(db_version, sql_filename, connection, cursor, parser.no_transaction, stop_at_version=FUSIONS_VERBOTEN_STEP)
+            check_and_exit_if_fusions(cursor)
+            db_version = get_db_version(cursor)
         run_migration(db_version, sql_filename, connection, cursor, parser.no_transaction)
+        # TODO: remove this after we update mysql version
+        # check invalid foreign key only when current db version larger or qeuals to GENERIC_ASSAY_MIGRATION_STEP
+        if not is_version_larger(GENERIC_ASSAY_MIGRATION_STEP, db_version):
+            check_and_remove_invalid_foreign_keys(cursor)
     print('Finished.', file=OUTPUT_FILE)
 
 # do main

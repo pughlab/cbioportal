@@ -4,19 +4,6 @@ Gene sets are collections of genes that are grouped together based on higher lev
 
 Before loading a study with gene set data, gene set definitions have to be added to the database. These can be custom user-defined sets, or sets downloaded from external sources such as [MSigDB](#references). Additionally, a gene set hierarchy can be imported which is used on the cBioPortal Query page for selecting gene sets.
 
-## Table of contents
-
-- [Quick example](#quick-example)
-- [Requirements for gene sets in cBioPortal](#requirements-for-gene-sets-in-cbioportal)
-- [Import Gene Sets](#import-gene-sets)
-	- [File formats](#file-formats)
-	- [Run the gene set importer](#run-the-gene-set-importer)
-- [Import Gene Set hierarchy](#import-gene-set-hierarchy)
-	- [File format](#file-format)
-	- [Running the gene set hierarchy importer](#running-the-gene-set-hierarchy-importer)
-- [Import a study with gene set data](#import-a-study-with-gene-set-data)
-- [References](#references)
-
 ## Quick example
 This example shows how the process of importing gene set data using test data.
 
@@ -43,7 +30,9 @@ Note: This removes existing gene set, gene set hierarchy and gene set genetic pr
 	--data ../../test/resources/genesets/study_es_0_tree.yaml
 ```
 
-4. Restart Tomcat if you have it running.
+4. Restart Tomcat if you have it running or call the `/api/cache` endpoint with a `DELETE` http-request
+   (see [here](/deployment/customization/portal.properties-Reference.md#evict-caches-with-the-apicache-endpoint) for more information).
+
 
 5. Import study (replace argument after `-u` with local cBioPortal and `-html` with preferred location for html report):
 

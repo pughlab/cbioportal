@@ -1,15 +1,15 @@
 --
--- Copyright (c) 2016 - 2020 Memorial Sloan-Kettering Cancer Center.
+-- Copyright (c) 2016 - 2022 Memorial Sloan Kettering Cancer Center.
 --
 -- This library is distributed in the hope that it will be useful, but WITHOUT
 -- ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
 -- FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
--- is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
+-- is on an "as is" basis, and Memorial Sloan Kettering Cancer Center has no
 -- obligations to provide maintenance, support, updates, enhancements or
--- modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
+-- modifications. In no event shall Memorial Sloan Kettering Cancer Center be
 -- liable to any party for direct, indirect, special, incidental or
 -- consequential damages, including lost profits, arising out of the use of this
--- software and its documentation, even if Memorial Sloan-Kettering Cancer
+-- software and its documentation, even if Memorial Sloan Kettering Cancer
 -- Center has been advised of the possibility of such damage.
 --
 -- This file is part of cBioPortal.
@@ -936,3 +936,67 @@ CREATE INDEX idx_cna_type ON cna_event (`ALTERATION`);
 CREATE INDEX idx_driver_filter ON alteration_driver_annotation (`DRIVER_FILTER`);
 CREATE INDEX idx_driver_tiers_filter ON alteration_driver_annotation (`DRIVER_TIERS_FILTER`);
 UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.8";
+
+##version: 2.12.9
+-- changes for 3 issues 7820 6375 and 3088
+-- WARNING: this will drop column SHORT_NAME from table CANCER_STUDY
+-- WARNING: this will drop column TYPE_OF_CANCER_ID from table sample
+-- the foreign key constraint on TYPE_OF_CANCER_ID in the sample table is removed with the migrate_db.py script. This is because the name can be either sample_ibfk_1  or sample_ibfk_2
+-- WARNING: this will drop column CLINICAL_TRIAL_KEYWORDS from table type_of_cancer
+ALTER TABLE `sample` DROP COLUMN `TYPE_OF_CANCER_ID`;
+ALTER TABLE `type_of_cancer` DROP COLUMN `CLINICAL_TRIAL_KEYWORDS`;
+ALTER TABLE `cancer_study` DROP COLUMN `SHORT_NAME`;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.9";
+
+##version: 2.12.10
+-- all previous genetic_profile will be considered as sample level data
+-- so set 0 (false) as default value for PATIENT_LEVEL field
+ALTER TABLE `genetic_profile` ADD COLUMN `PATIENT_LEVEL` boolean DEFAULT 0;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.10";
+
+##version: 2.12.12
+DROP TABLE IF EXISTS `pdb_uniprot_residue_mapping`;
+DROP TABLE IF EXISTS `pdb_uniprot_alignment`;
+DROP TABLE IF EXISTS `protein_array_data`;
+DROP TABLE IF EXISTS `protein_array_target`;
+DROP TABLE IF EXISTS `protein_array_info`;
+DROP TABLE IF EXISTS `protein_array_cancer_study`;
+DROP TABLE IF EXISTS `sanger_cancer_census`;
+DROP TABLE IF EXISTS `uniprot_id_mapping`;
+DROP TABLE IF EXISTS `pfam_graphics`;
+DROP TABLE IF EXISTS `text_cache`;
+DROP TABLE IF EXISTS `drug_interaction`;
+DROP TABLE IF EXISTS `drug`;
+DROP TABLE IF EXISTS `interaction`;
+-- changes for issue 9257
+ALTER TABLE `reference_genome_gene` DROP COLUMN `EXONIC_LENGTH`;
+-- changes for issue 9032
+ALTER TABLE `genetic_entity` MODIFY COLUMN `STABLE_ID` VARCHAR(255) DEFAULT NULL;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.12";
+
+##version: 2.12.13
+ALTER TABLE `sample` MODIFY COLUMN `STABLE_ID` VARCHAR(63) NOT NULL;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.13";
+
+##version: 2.12.14
+ALTER TABLE `structural_variant` MODIFY COLUMN `SITE1_ENTREZ_GENE_ID` int(11);
+ALTER TABLE `structural_variant` ADD COLUMN `SITE1_REGION` varchar(25) AFTER `SITE1_CHROMOSOME`;
+ALTER TABLE `structural_variant` ADD COLUMN `SITE1_REGION_NUMBER` int(11) AFTER `SITE1_REGION`;
+ALTER TABLE `structural_variant` ADD COLUMN `SITE1_CONTIG` varchar(100) AFTER `SITE1_REGION_NUMBER`;
+ALTER TABLE `structural_variant` ADD COLUMN `SITE2_REGION` varchar(25) AFTER `SITE2_CHROMOSOME`;
+ALTER TABLE `structural_variant` ADD COLUMN `SITE2_REGION_NUMBER` int(11) AFTER `SITE2_REGION`;
+ALTER TABLE `structural_variant` ADD COLUMN `SITE2_CONTIG` varchar(100) AFTER `SITE2_REGION_NUMBER`;
+ALTER TABLE `structural_variant` ADD COLUMN `SV_STATUS` varchar(25) NOT NULL DEFAULT 'SOMATIC' COMMENT 'GERMLINE or SOMATIC.' AFTER `COMMENTS`;
+ALTER TABLE `structural_variant` DROP COLUMN `SITE1_EXON`;
+ALTER TABLE `structural_variant` DROP COLUMN `SITE2_EXON`;
+ALTER TABLE `structural_variant` DROP COLUMN `CENTER`;
+ALTER TABLE `structural_variant` DROP COLUMN `EXTERNAL_ANNOTATION`;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.14";
+
+##version: 2.12.15
+ALTER TABLE `sample_cna_event` ADD COLUMN `ANNOTATION_JSON` JSON AFTER `GENETIC_PROFILE_ID`;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.15";
+
+##version: 2.12.16
+ALTER TABLE `structural_variant` ADD COLUMN `ANNOTATION_JSON` JSON AFTER `SV_STATUS`;
+UPDATE `info` SET `DB_SCHEMA_VERSION`="2.12.16";

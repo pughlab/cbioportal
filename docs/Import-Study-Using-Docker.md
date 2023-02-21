@@ -1,6 +1,7 @@
 # Import Study Using Docker
 
-:warning: Please make sure to restart tomcat every time you add/remove/overwrite a study
+:warning: Every time you add/remove/overwrite a study please restart tomcat (or the Docker container), or 
+call the `/api/cache` endpoint with a `DELETE` http-request (see [here](/deployment/customization/portal.properties-Reference.md#evict-caches-with-the-apicache-endpoint) for more information).
 
 ## Adding a Study
 

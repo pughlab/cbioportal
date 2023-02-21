@@ -4,14 +4,13 @@ import java.io.Serializable;
 import java.util.Date;
 import javax.validation.constraints.NotNull;
 
-public class CancerStudy implements Serializable {
+public class CancerStudy implements ReadPermission, Serializable {
 
     private Integer cancerStudyId;
     @NotNull
     private String cancerStudyIdentifier;
     private String typeOfCancerId;
     private String name;
-    private String shortName;
     private String description;
     private Boolean publicStudy;
     private String pmid;
@@ -29,9 +28,12 @@ public class CancerStudy implements Serializable {
     private Integer miRnaSampleCount;
     private Integer methylationHm27SampleCount;
     private Integer rppaSampleCount;
+    private Integer massSpectrometrySampleCount;
     private Integer completeSampleCount;
     private String referenceGenome;
-
+    private Boolean readPermission = true;
+    private Integer treatmentCount;
+    
     public Integer getCancerStudyId() {
         return cancerStudyId;
     }
@@ -62,14 +64,6 @@ public class CancerStudy implements Serializable {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getShortName() {
-        return shortName;
-    }
-
-    public void setShortName(String shortName) {
-        this.shortName = shortName;
     }
 
     public String getDescription() {
@@ -215,8 +209,34 @@ public class CancerStudy implements Serializable {
     public void setCompleteSampleCount(Integer completeSampleCount) {
         this.completeSampleCount = completeSampleCount;
     }
-    
+
+    public Integer getMassSpectrometrySampleCount() {
+        return massSpectrometrySampleCount;
+    }
+
+    public void setMassSpectrometrySampleCount(Integer massSpectrometrySampleCount) {
+        this.massSpectrometrySampleCount = massSpectrometrySampleCount;
+    }
+
     public String getReferenceGenome() { return  referenceGenome; }
     
     public void setReferenceGenome(String referenceGenome) { this.referenceGenome = referenceGenome; }
+
+    @Override
+    public void setReadPermission(Boolean permission) {
+        this.readPermission = permission;
+    }
+
+    @Override
+    public Boolean getReadPermission() {
+        return readPermission;
+    }
+
+    public Integer getTreatmentCount() {
+        return treatmentCount;
+    }
+
+    public void setTreatmentCount(Integer treatmentCount) {
+        this.treatmentCount = treatmentCount;
+    }
 }

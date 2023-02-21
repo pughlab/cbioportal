@@ -18,7 +18,8 @@
             genetic_profile.SHOW_PROFILE_IN_ANALYSIS_TAB AS "${prefix}showProfileInAnalysisTab",
             genetic_profile.PIVOT_THRESHOLD AS "${prefix}pivotThreshold",
             genetic_profile.SORT_ORDER AS "${prefix}sortOrder",
-            genetic_profile.GENERIC_ASSAY_TYPE AS "${prefix}genericAssayType"
+            genetic_profile.GENERIC_ASSAY_TYPE AS "${prefix}genericAssayType",
+            genetic_profile.PATIENT_LEVEL AS "${prefix}patientLevel"
         </if>
         <if test="projection == 'DETAILED'">
             ,
@@ -38,9 +39,14 @@
         INNER JOIN reference_genome ON cancer_study.REFERENCE_GENOME_ID = reference_genome.REFERENCE_GENOME_ID
         <if test="studyIds != null">
             WHERE cancer_study.CANCER_STUDY_IDENTIFIER IN
-            <foreach item="item" collection="studyIds" open="(" separator="," close=")">
-                #{item}
-            </foreach>
+            <if test="studyIds.isEmpty()">
+                (NULL)
+            </if>
+            <if test="!studyIds.isEmpty()">
+                <foreach item="item" collection="studyIds" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
         </if>
         <if test="sortBy != null and projection != 'ID'">
             ORDER BY ${sortBy} ${direction}
@@ -145,5 +151,4 @@
                          genetic_profile.STABLE_ID = #{referredMolecularProfileId}
                        )
     </select>
-    
 </mapper>

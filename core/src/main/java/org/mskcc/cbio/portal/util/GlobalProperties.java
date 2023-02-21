@@ -50,8 +50,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -153,6 +153,7 @@ public class GlobalProperties {
     public static final String STUDY_VIEW_MDACC_HEATMAP_META_URL = "mdacc.heatmap.study.meta.url";
 
     public static final String SHOW_ONCOKB = "show.oncokb";
+    public static final String MERGE_ONCOKB_ICONS_BY_DEFAULT = "oncokb.merge_icons_by_default";
     public static final String ONCOKB_TOKEN = "oncokb.token";
 
     private static String sessionServiceURL;
@@ -170,6 +171,12 @@ public class GlobalProperties {
     private static String frontendConfig;
     @Value("${frontend.config:}") // default is empty string
     public void setFrontendConfig(String property) { frontendConfig = property; }
+
+    private static String oncoprintClinicalTracksConfigJson;
+    @Value("${oncoprint.clinical_tracks.config_json:}") // default is empty string
+    public void setOncoprintClinicalTracksConfigJson(String property) {
+        oncoprintClinicalTracksConfigJson = property; 
+    }
 
     // properties for showing the right logo in the header_bar and default logo
     public static final String SKIN_RIGHT_LOGO = "skin.right_logo";
@@ -214,13 +221,13 @@ public class GlobalProperties {
     public static final String SKIN_DOCUMENTATION_MARKDOWN="skin.documentation.markdown";
 
     public static final String SKIN_FAQ="skin.documentation.faq";
-    public static final String DEFAULT_SKIN_FAQ="FAQ.md";
+    public static final String DEFAULT_SKIN_FAQ="user-guide/faq.md";
     public static final String SKIN_ABOUT="skin.documentation.about";
     public static final String DEFAULT_SKIN_ABOUT="About-Us.md";
     public static final String SKIN_NEWS="skin.documentation.news";
     public static final String DEFAULT_SKIN_NEWS="News.md";
     public static final String SKIN_OQL="skin.documentation.oql";
-    public static final String DEFAULT_SKIN_OQL="Onco-Query-Language.md";
+    public static final String DEFAULT_SKIN_OQL="user-guide/oql.md";
 
     public static final String SKIN_EXAMPLES_RIGHT_COLUMN_HTML="skin.examples_right_column_html";
     
@@ -287,6 +294,10 @@ public class GlobalProperties {
     @Value("${show.genomenexus.annotation_sources:mutation_assessor}") // Available sources: mutation_assessor
     public void setShowGenomeNexusAnnotationSources(String property) { showGenomeNexusAnnotationSources = property; }
 
+    private static String genomeNexusIsoformOverrideSource;
+    @Value("${genomenexus.isoform_override_source:mskcc}") // Options: mskcc, uniprot
+    public void setGenomeNexusIsoformOverrideSource(String property) { genomeNexusIsoformOverrideSource = property; }
+
     private static boolean showMutationMapperToolGrch38;
     @Value("${show.mutation_mappert_tool.grch38:true}") // default is true
     public void setShowMutationMapperToolGrch38(String property) { showMutationMapperToolGrch38 = Boolean.parseBoolean(property); }
@@ -294,6 +305,10 @@ public class GlobalProperties {
     private static boolean showSignal;
     @Value("${show.signal:false}") // default is false
     public void setShowSignal(String property) { showSignal = Boolean.parseBoolean(property); }
+
+    private static boolean showNdex;
+    @Value("${show.ndex:true}") // default is true
+    public void setShowNdex(String property) { showNdex = Boolean.parseBoolean(property); }
 
 	/*
      * Trim whitespace of url and append / if it does not exist. Return empty
@@ -345,7 +360,7 @@ public class GlobalProperties {
     @Value("${frontend.url.runtime:}") 
     public void setFrontendUrlRuntime(String property) { frontendUrlRuntime = property; }
 
-    private static Log LOG = LogFactory.getLog(GlobalProperties.class);
+    private static Logger LOG = LoggerFactory.getLogger(GlobalProperties.class);
     private static ConfigPropertyResolver portalProperties = new ConfigPropertyResolver();
     private static Properties mavenProperties = initializeProperties(MAVEN_PROPERTIES_FILE_NAME);
 
@@ -484,11 +499,12 @@ public class GlobalProperties {
 		return (studies.length > 0) ? Arrays.asList(studies) : Collections.<String>emptyList();
 	}
 
-    // CHANGES TO THIS LIST MUST BE PROPAGATED TO 'CacheMapUtil'
+    // This method is the equivalent of @portalSecurityConfig.userAuthorizationEnabled()
+    // method in the org.cbioportal.utils package. Update both when changes are needed.
     public static boolean usersMustAuthenticate()
     {
         // authentication for social_auth/social_auth_google/social_auth_microsoft is optional
-        return (!authenticate.isEmpty() && !authenticate.equals("false") && !authenticate.contains("social_auth"));
+        return (!authenticate.isEmpty() && !authenticate.equals("noauthsessionservice") && !authenticate.equals("false") && !authenticate.contains("social_auth"));
     }
 
     public static String authenticationMethod()
@@ -901,6 +917,15 @@ public class GlobalProperties {
         }
     }
 
+    public static boolean mergeOncoKBIcons() {
+        String mergeOncoKbIconsByDefault = portalProperties.getProperty(MERGE_ONCOKB_ICONS_BY_DEFAULT);
+        if (mergeOncoKbIconsByDefault == null || mergeOncoKbIconsByDefault.isEmpty()) {
+            return true; // merge OncoKB icons by default
+        } else {
+            return Boolean.parseBoolean(mergeOncoKbIconsByDefault);
+        }
+    }
+
     public static boolean showHotspot() {
         String hotspot = portalProperties.getProperty(SHOW_HOTSPOT);
         if (hotspot==null) {
@@ -934,8 +959,16 @@ public class GlobalProperties {
         return showGenomeNexusAnnotationSources;
     }
 
+    public static String getGenomeNexusIsoformOverrideSource() {
+        return genomeNexusIsoformOverrideSource;
+    }
+
     public static boolean showMutationMapperToolGrch38() {
         return showMutationMapperToolGrch38;
+    }
+
+    public static boolean showNdex() {
+        return showNdex;
     }
 
     public static boolean showSignal() {
@@ -1164,6 +1197,14 @@ public class GlobalProperties {
     public static String getFrontendConfig() {
         if (frontendConfig.length() > 0) {
             return readFile(frontendConfig);
+        } else {
+            return null;
+        }
+    }
+
+    public static String getOncoprintClinicalTracksConfigJson() {
+        if (oncoprintClinicalTracksConfigJson.length() > 0) {
+            return readFile(oncoprintClinicalTracksConfigJson);
         } else {
             return null;
         }

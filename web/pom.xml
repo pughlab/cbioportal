@@ -33,11 +33,20 @@
     </dependency>
     <dependency>
       <groupId>io.springfox</groupId>
-      <artifactId>springfox-swagger2</artifactId>
+      <artifactId>springfox-oas</artifactId>
     </dependency>
     <dependency>
       <groupId>io.springfox</groupId>
-      <artifactId>springfox-swagger-ui</artifactId>
+      <artifactId>springfox-spring-web</artifactId>
+    </dependency>
+<!--
+    Even though this isn't a spring boot project, we need this artifact.
+    Removing it causes a wire time error:
+        No qualifying bean of type 'springfox.documentation.spring.web.DescriptionResolver'
+-->
+    <dependency>
+      <groupId>io.springfox</groupId>
+      <artifactId>springfox-boot-starter</artifactId>
     </dependency>
     <dependency>
       <groupId>io.springfox</groupId>
@@ -84,8 +93,31 @@
       <artifactId>datumbox-framework-lib</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.github.cbioportal</groupId>
-      <artifactId>session-service</artifactId>
+      <groupId>org.mongodb</groupId>
+      <artifactId>mongo-java-driver</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>com.github.cbioportal</groupId>
+        <artifactId>session-service</artifactId>
+        <classifier>model</classifier>
+        <exclusions>
+            <exclusion>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-to-slf4j</artifactId>
+            </exclusion>
+            <exclusion>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+            </exclusion>
+            <exclusion>
+                <artifactId>spring-boot-starter-web</artifactId>
+                <groupId>org.springframework.boot</groupId>
+            </exclusion>
+            <exclusion>
+                <artifactId>spring-boot-starter-data-mongodb</artifactId>
+                <groupId>org.springframework.boot</groupId>
+            </exclusion>
+        </exclusions>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -94,10 +126,6 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-to-slf4j</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.security</groupId>

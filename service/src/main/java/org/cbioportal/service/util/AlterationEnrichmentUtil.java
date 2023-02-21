@@ -5,7 +5,6 @@ import org.apache.commons.math3.util.Pair;
 import org.cbioportal.model.AlterationCountByGene;
 import org.cbioportal.model.AlterationEnrichment;
 import org.cbioportal.model.CountSummary;
-import org.cbioportal.model.EnrichmentType;
 import org.cbioportal.model.Gene;
 import org.cbioportal.model.MolecularProfile;
 import org.cbioportal.model.MolecularProfile.MolecularAlterationType;
@@ -54,14 +53,12 @@ public class AlterationEnrichmentUtil<T extends AlterationCountByGene> {
                                 return entry.getValue().getFirst().stream()
                                         .collect(Collectors.toMap(AlterationCountByGene::getEntrezGeneId, c -> c));
                             }));
-
         Map<String, Long> profiledCaseCountsByGroup = mutationCountsbyGroup
             .entrySet()
             .stream()
             .collect(Collectors.toMap(
                 Entry::getKey,
                 entry -> entry.getValue().getSecond()));
-
         Set<Integer> allGeneIds = mutationCountsbyEntrezGeneIdAndGroup
             .values()
             .stream()
@@ -77,16 +74,21 @@ public class AlterationEnrichmentUtil<T extends AlterationCountByGene> {
                 .collect(Collectors.toList()),
             "ENTREZ_GENE_ID",
             "SUMMARY");
-
         return genes
             .stream()
             .filter(gene -> {
                 // filter genes where number of altered cases in all groups is 0
+                // or where number of altered cases > number of profiled cases
+                // (the latter can happen in targeted studies when the gene is not on a panel,
+                // but it is a participant in a structural variant, e.g. fusion, with a gene
+                // that is on the panel
                 return groups.stream().filter(group -> {
                     AlterationCountByGene mutationCountByGene = mutationCountsbyEntrezGeneIdAndGroup
                         .getOrDefault(group, new HashMap<Integer, AlterationCountByGene>())
                         .get(gene.getEntrezGeneId());
-                    return mutationCountByGene == null ? false : mutationCountByGene.getNumberOfAlteredCases() != 0;
+                    return mutationCountByGene == null ? false : (mutationCountByGene.getNumberOfAlteredCases() != 0
+                                                                  && mutationCountByGene.getNumberOfAlteredCases() <=
+                                                                  mutationCountByGene.getNumberOfProfiledCases());
                 }).count() > 0;
             })
             .map(gene -> {
@@ -106,7 +108,6 @@ public class AlterationEnrichmentUtil<T extends AlterationCountByGene> {
                     groupCasesCount.setProfiledCount(profiledCount);
                     return groupCasesCount;
                 }).collect(Collectors.toList());
-
                 List<CountSummary> filteredCounts = counts.stream()
                     .filter(groupCasesCount -> groupCasesCount.getProfiledCount() > 0)
                     .collect(Collectors.toList());

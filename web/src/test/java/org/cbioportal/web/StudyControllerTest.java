@@ -6,6 +6,7 @@ import org.cbioportal.model.TypeOfCancer;
 import org.cbioportal.model.meta.BaseMeta;
 import org.cbioportal.service.StudyService;
 import org.cbioportal.service.exception.StudyNotFoundException;
+import org.cbioportal.utils.security.AccessLevel;
 import org.cbioportal.web.parameter.HeaderKeyConstants;
 import org.hamcrest.Matchers;
 import org.junit.Before;
@@ -19,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -32,6 +34,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
 
+import static org.mockito.ArgumentMatchers.eq;
+
 @RunWith(SpringJUnit4ClassRunner.class)
 @WebAppConfiguration
 @ContextConfiguration("/applicationContext-web-test.xml")
@@ -42,7 +46,6 @@ public class StudyControllerTest {
     private static final String TEST_CANCER_STUDY_IDENTIFIER_1 = "test_study_1";
     private static final String TEST_TYPE_OF_CANCER_ID_1 = "test_type_of_cancer_id_1";
     private static final String TEST_NAME_1 = "test_name_1";
-    private static final String TEST_SHORT_NAME_1 = "test_short_name_1";
     private static final String TEST_DESCRIPTION_1 = "test_description_1";
     private static final boolean TEST_PUBLIC_STUDY_1 = true;
     private static final String TEST_PMID_1 = "test_pmid_1";
@@ -55,7 +58,6 @@ public class StudyControllerTest {
     private static final String TEST_CANCER_STUDY_IDENTIFIER_2 = "test_study_2";
     private static final String TEST_TYPE_OF_CANCER_ID_2 = "test_type_of_cancer_id_2";
     private static final String TEST_NAME_2 = "test_name_2";
-    private static final String TEST_SHORT_NAME_2 = "test_short_name_2";
     private static final String TEST_DESCRIPTION_2 = "test_description_2";
     private static final boolean TEST_PUBLIC_STUDY_2 = true;
     private static final String TEST_PMID_2 = "test_pmid_2";
@@ -65,7 +67,6 @@ public class StudyControllerTest {
     private static final String TEST_DATE_2 = "2013-10-12 11:11:15";
     private static final String TEST_TAGS_2 = "{}";
     private static final String TEST_TYPE_OF_CANCER_NAME = "test_type_of_cancer_name";
-    private static final String TEST_CLINICAL_TRIAL_KEYWORDS = "test_clinical_trial_keywords";
     private static final String TEST_DEDICATED_COLOR = "test_dedicated_color";
     private static final String TEST_TYPE_OF_CANCER_SHORT_NAME = "test_type_of_cancer_short_name";
     private static final String TEST_PARENT = "test_parent";
@@ -76,6 +77,9 @@ public class StudyControllerTest {
 
     @Autowired
     private StudyService studyService;
+    
+    @Autowired
+    private StudyController studyController;
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
@@ -99,7 +103,7 @@ public class StudyControllerTest {
         List<CancerStudy> cancerStudyList = createExampleStudies();
 
         Mockito.when(studyService.getAllStudies(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(),
-                Mockito.any(), Mockito.any())).thenReturn(cancerStudyList);
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(cancerStudyList);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/studies")
                 .accept(MediaType.APPLICATION_JSON))
@@ -116,7 +120,6 @@ public class StudyControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].name").value(TEST_NAME_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].pmid").value(TEST_PMID_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].publicStudy").value(TEST_PUBLIC_STUDY_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].shortName").value(TEST_SHORT_NAME_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].status").value(TEST_STATUS_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[0].cancerTypeId").value(TEST_TYPE_OF_CANCER_ID_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[1].cancerStudyId").doesNotExist())
@@ -129,10 +132,38 @@ public class StudyControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$[1].name").value(TEST_NAME_2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[1].pmid").value(TEST_PMID_2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[1].publicStudy").value(TEST_PUBLIC_STUDY_2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].shortName").value(TEST_SHORT_NAME_2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[1].status").value(TEST_STATUS_2))
                 .andExpect(MockMvcResultMatchers.jsonPath("$[1].cancerTypeId").value(TEST_TYPE_OF_CANCER_ID_2));
 
+    }
+
+    @Test
+    public void getAllStudiesSetAccessLevelReadIsDefault() throws Exception {
+
+        AccessLevel expectedAccessLevel = AccessLevel.READ;
+        Mockito.when(studyService.getAllStudies(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(),
+                Mockito.any(), Mockito.any(), Mockito.any(), eq(expectedAccessLevel))).thenReturn(new ArrayList<>());
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/studies")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+    }
+
+    @Test
+    public void getAllStudiesSetAccessLevelListConditionally() throws Exception {
+
+        ReflectionTestUtils.setField(studyController, "showUnauthorizedStudiesOnHomePage", true);
+        
+        AccessLevel expectedAccessLevel = AccessLevel.LIST;
+        Mockito.when(studyService.getAllStudies(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(),
+                Mockito.any(), Mockito.any(), Mockito.any(), eq(expectedAccessLevel))).thenReturn(new ArrayList<>());
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/studies")
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        ReflectionTestUtils.setField(studyController, "showUnauthorizedStudiesOnHomePage", false);
     }
 
     @Test
@@ -171,7 +202,6 @@ public class StudyControllerTest {
         cancerStudy.setCancerStudyIdentifier(TEST_CANCER_STUDY_IDENTIFIER_1);
         cancerStudy.setTypeOfCancerId(TEST_TYPE_OF_CANCER_ID_1);
         cancerStudy.setName(TEST_NAME_1);
-        cancerStudy.setShortName(TEST_SHORT_NAME_1);
         cancerStudy.setDescription(TEST_DESCRIPTION_1);
         cancerStudy.setPublicStudy(TEST_PUBLIC_STUDY_1);
         cancerStudy.setPmid(TEST_PMID_1);
@@ -182,7 +212,6 @@ public class StudyControllerTest {
         TypeOfCancer typeOfCancer = new TypeOfCancer();
         typeOfCancer.setTypeOfCancerId(TEST_TYPE_OF_CANCER_ID_1);
         typeOfCancer.setName(TEST_TYPE_OF_CANCER_NAME);
-        typeOfCancer.setClinicalTrialKeywords(TEST_CLINICAL_TRIAL_KEYWORDS);
         typeOfCancer.setDedicatedColor(TEST_DEDICATED_COLOR);
         typeOfCancer.setShortName(TEST_TYPE_OF_CANCER_SHORT_NAME);
         typeOfCancer.setParent(TEST_PARENT);
@@ -203,14 +232,11 @@ public class StudyControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.name").value(TEST_NAME_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.pmid").value(TEST_PMID_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.publicStudy").value(TEST_PUBLIC_STUDY_1))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.shortName").value(TEST_SHORT_NAME_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.status").value(TEST_STATUS_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.cancerTypeId").value(TEST_TYPE_OF_CANCER_ID_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.cancerType.cancerTypeId")
                         .value(TEST_TYPE_OF_CANCER_ID_1))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.cancerType.name").value(TEST_TYPE_OF_CANCER_NAME))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.cancerType.clinicalTrialKeywords")
-                        .value(TEST_CLINICAL_TRIAL_KEYWORDS))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.cancerType.dedicatedColor").value(TEST_DEDICATED_COLOR))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.cancerType.shortName")
                         .value(TEST_TYPE_OF_CANCER_SHORT_NAME))
@@ -243,7 +269,6 @@ public class StudyControllerTest {
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].name").value(TEST_NAME_1))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].pmid").value(TEST_PMID_1))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].publicStudy").value(TEST_PUBLIC_STUDY_1))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[0].shortName").value(TEST_SHORT_NAME_1))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].status").value(TEST_STATUS_1))
             .andExpect(MockMvcResultMatchers.jsonPath("$[0].cancerTypeId").value(TEST_TYPE_OF_CANCER_ID_1))
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].cancerStudyId").doesNotExist())
@@ -256,18 +281,17 @@ public class StudyControllerTest {
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].name").value(TEST_NAME_2))
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].pmid").value(TEST_PMID_2))
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].publicStudy").value(TEST_PUBLIC_STUDY_2))
-            .andExpect(MockMvcResultMatchers.jsonPath("$[1].shortName").value(TEST_SHORT_NAME_2))
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].status").value(TEST_STATUS_2))
             .andExpect(MockMvcResultMatchers.jsonPath("$[1].cancerTypeId").value(TEST_TYPE_OF_CANCER_ID_2));
     }
 
     @Test
     public void getTags() throws Exception {
-
+        AccessLevel expectedAccessLevel = AccessLevel.READ;
         CancerStudyTags cancerStudyTags = new CancerStudyTags();
         cancerStudyTags.setTags(TEST_TAGS_1);
 
-        Mockito.when(studyService.getTags(Mockito.anyString())).thenReturn(cancerStudyTags);
+        Mockito.when(studyService.getTags(Mockito.anyString(), Mockito.eq(expectedAccessLevel))).thenReturn(cancerStudyTags);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/studies/test_study_id/tags")
                 .accept(MediaType.APPLICATION_JSON))
@@ -278,8 +302,8 @@ public class StudyControllerTest {
 
     @Test
     public void getEmptyTags() throws Exception {
-
-        Mockito.when(studyService.getTags(Mockito.anyString())).thenReturn(null);
+        AccessLevel expectedAccessLevel = AccessLevel.READ;
+        Mockito.when(studyService.getTags(Mockito.anyString(), Mockito.eq(expectedAccessLevel))).thenReturn(null);
 
         mockMvc.perform(MockMvcRequestBuilders.get("/studies/test_study_id/tags")
                 .accept(MediaType.APPLICATION_JSON))
@@ -331,7 +355,6 @@ public class StudyControllerTest {
         cancerStudy1.setCancerStudyIdentifier(TEST_CANCER_STUDY_IDENTIFIER_1);
         cancerStudy1.setTypeOfCancerId(TEST_TYPE_OF_CANCER_ID_1);
         cancerStudy1.setName(TEST_NAME_1);
-        cancerStudy1.setShortName(TEST_SHORT_NAME_1);
         cancerStudy1.setDescription(TEST_DESCRIPTION_1);
         cancerStudy1.setPublicStudy(TEST_PUBLIC_STUDY_1);
         cancerStudy1.setPmid(TEST_PMID_1);
@@ -345,7 +368,6 @@ public class StudyControllerTest {
         cancerStudy2.setCancerStudyIdentifier(TEST_CANCER_STUDY_IDENTIFIER_2);
         cancerStudy2.setTypeOfCancerId(TEST_TYPE_OF_CANCER_ID_2);
         cancerStudy2.setName(TEST_NAME_2);
-        cancerStudy2.setShortName(TEST_SHORT_NAME_2);
         cancerStudy2.setDescription(TEST_DESCRIPTION_2);
         cancerStudy2.setPublicStudy(TEST_PUBLIC_STUDY_2);
         cancerStudy2.setPmid(TEST_PMID_2);

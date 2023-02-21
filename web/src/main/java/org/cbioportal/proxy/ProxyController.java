@@ -2,7 +2,7 @@ package org.cbioportal.proxy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.util.StringUtils;
@@ -14,15 +14,12 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletRequest;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+
 
 @RestController
 public class ProxyController {
@@ -31,6 +28,9 @@ public class ProxyController {
 
     private Logger LOG = LoggerFactory.getLogger(ProxyController.class);
 
+    @Autowired
+    private Monkifier monkifier;
+    
     @RequestMapping("/**")
     public String proxy(@RequestBody(required = false) String body, HttpMethod method, HttpServletRequest request)
         throws URISyntaxException {
@@ -43,15 +43,85 @@ public class ProxyController {
             String.class
         ).getBody();
     }
-
+    
     @RequestMapping("/oncokb/**")
-    public String proxyOncokb(@RequestBody(required = false) String body, HttpMethod method, HttpServletRequest request)
-        throws URISyntaxException {
+    public String proxyOncokb(
+        @RequestBody(required = false) String body,
+        HttpMethod method,
+        HttpServletRequest request
+    ) throws URISyntaxException {
+        String token = request.getHeader("X-Proxy-User-Agreement");
+        token = (token == null || token.isEmpty()) ? "NA": token;
+        
+        return exchangeOncokbData(
+            body,
+            request.getPathInfo().replaceFirst("/oncokb", ""),
+            request.getQueryString(),
+            method,
+            getOncokbHeaders(request, token)
+        );
+    }
+    
+    @RequestMapping("/A8F74CD7851BDEE8DCD2E86AB4E2A711/**")
+    public String proxyEncodedOncokb(
+        @RequestBody(required = false) String body,
+        HttpMethod method, 
+        HttpServletRequest request
+    ) throws URISyntaxException, UnsupportedEncodingException {
+        // make sure that the custom Proxy User Agreement header exists
+        String proxyUserAgreement = request.getHeader("X-Proxy-User-Agreement");
+        if (proxyUserAgreement == null || !proxyUserAgreement.equals(
+            "I/We do NOT use this obfuscated proxy to programmatically obtain private OncoKB data. " +
+            "I/We know that I/we should get a valid data access token by registering at https://www.oncokb.org/account/register."
+        )) {
+            throw new OncoKBProxyUserAgreementException();
+        }
+        
+        String decodedBody = body == null ? null: this.monkifier.decodeBase64(body);
+        String encodedPath = request.getPathInfo().replaceFirst("/A8F74CD7851BDEE8DCD2E86AB4E2A711/", "");
+        String decodedPath = this.monkifier.decodeBase64(encodedPath);
+        String decodedQueryString = this.monkifier.decodeQueryString(request);
+        
+        String response = exchangeOncokbData(
+            decodedBody,
+            decodedPath,
+            decodedQueryString,
+            method,
+            getOncokbHeaders(request)
+        );
+        
+        return "\"" + this.monkifier.encodeBase64(response) + "\"";
+    }
+    
+    private String exchangeOncokbData(
+        String body,
+        String pathInfo,
+        String queryString,
+        HttpMethod method,
+        HttpHeaders httpHeaders
+    ) throws URISyntaxException {
+        return exchangeData(
+            body,
+            buildUri(getOncokbApiUrl() + pathInfo, queryString),
+            method,
+            httpHeaders,
+            String.class
+        ).getBody();
+    }
+    
+    private String getOncokbApiUrl() {
+        return getProperty("oncokb.public_api.url", DEFAULT_ONCOKB_URL);
+    }
+    
+    private HttpHeaders getOncokbHeaders(HttpServletRequest request) {
+        return this.getOncokbHeaders(request, null);
+    }
+    
+    private HttpHeaders getOncokbHeaders(HttpServletRequest request, String token) {
         // load portal.properties
         this.properties = loadProperties(getResourceStream("portal.properties"));
-        Boolean showOncokb = Boolean.parseBoolean(getProperty("show.oncokb", "true"));
-        String oncokbToken = getProperty("oncokb.token", "");
-        String oncokbApiUrl = getProperty("oncokb.public_api.url", DEFAULT_ONCOKB_URL);
+        boolean showOncokb = Boolean.parseBoolean(getProperty("show.oncokb", "true"));
+        String oncokbToken = token == null ? getProperty("oncokb.token", ""): token;
 
         if (!showOncokb) {
             throw new OncoKBServiceIsDisabledException();
@@ -63,11 +133,7 @@ public class ProxyController {
             httpHeaders.add("Authorization", "Bearer " + oncokbToken);
         }
         
-        return exchangeData(body, 
-            buildUri(oncokbApiUrl + request.getPathInfo().replaceFirst("/oncokb", ""), request.getQueryString()), 
-            method,
-            httpHeaders,
-            String.class).getBody();
+        return httpHeaders;
     }
 
     private HttpHeaders initHeaders(HttpServletRequest request) {
@@ -142,7 +208,11 @@ public class ProxyController {
     }
 
     @ResponseStatus(code = HttpStatus.FORBIDDEN, reason = "No OncoKB access token is provided")
-    public class NOOncoKBTokenProvidedException extends RuntimeException {
+    public class NoOncoKBTokenProvidedException extends RuntimeException {
+    }
+
+    @ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "Fair Usage Agreement is missing")
+    public class OncoKBProxyUserAgreementException extends RuntimeException {
     }
 
 }

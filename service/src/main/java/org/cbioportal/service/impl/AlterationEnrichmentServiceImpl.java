@@ -2,7 +2,6 @@ package org.cbioportal.service.impl;
 
 import org.apache.commons.math3.util.Pair;
 import org.cbioportal.model.*;
-import org.cbioportal.model.QueryElement;
 import org.cbioportal.model.util.Select;
 import org.cbioportal.service.AlterationEnrichmentService;
 import org.cbioportal.service.AlterationCountService;
@@ -24,20 +23,20 @@ public class AlterationEnrichmentServiceImpl implements AlterationEnrichmentServ
 
     @Override
     public List<AlterationEnrichment> getAlterationEnrichments(
-        Map<String, List<MolecularProfileCaseIdentifier>> molecularProfileCaseSets, final Select<MutationEventType> mutationEventTypes,
-        final Select<CNA> cnaEventTypes, EnrichmentType enrichmentType) {
+            Map<String, List<MolecularProfileCaseIdentifier>> molecularProfileCaseSets,
+            EnrichmentType enrichmentType,
+            AlterationFilter alterationFilter) {
 
         Map<String, Pair<List<AlterationCountByGene>, Long>> alterationCountsbyEntrezGeneIdAndGroup = getAlterationCountsbyEntrezGeneIdAndGroup(
-            molecularProfileCaseSets, mutationEventTypes, cnaEventTypes, enrichmentType);
+            molecularProfileCaseSets, enrichmentType, alterationFilter);
 
         return alterationEnrichmentUtil.createAlterationEnrichments(alterationCountsbyEntrezGeneIdAndGroup);
     }
 
     public Map<String, Pair<List<AlterationCountByGene>, Long>> getAlterationCountsbyEntrezGeneIdAndGroup(
         Map<String, List<MolecularProfileCaseIdentifier>> molecularProfileCaseSets,
-        Select<MutationEventType> mutationEventTypes,
-        Select<CNA> cnaEventTypes,
-        EnrichmentType enrichmentType) {
+        EnrichmentType enrichmentType,
+        AlterationFilter alterationFilter) {
         return molecularProfileCaseSets
             .entrySet()
             .stream()
@@ -47,14 +46,12 @@ public class AlterationEnrichmentServiceImpl implements AlterationEnrichmentServ
 
                     if (enrichmentType.equals(EnrichmentType.SAMPLE)) {
                         return alterationCountService
-                                .getSampleAlterationCounts(
+                            .getSampleAlterationCounts(
                                 entry.getValue(),
                                 Select.all(),
                                 true,
                                 true,
-                                mutationEventTypes,
-                                cnaEventTypes,
-                                QueryElement.PASS);
+                                alterationFilter);
                     } else {
                         return alterationCountService
                             .getPatientAlterationCounts(
@@ -62,9 +59,7 @@ public class AlterationEnrichmentServiceImpl implements AlterationEnrichmentServ
                                 Select.all(),
                                 true,
                                 true,
-                                mutationEventTypes,
-                                cnaEventTypes,
-                                QueryElement.PASS);
+                                alterationFilter);
                     }
                 }));
     }

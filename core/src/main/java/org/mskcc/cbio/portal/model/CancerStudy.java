@@ -1,15 +1,15 @@
 /*
- * Copyright (c) 2015 - 2016 Memorial Sloan-Kettering Cancer Center.
+ * Copyright (c) 2015 - 2022 Memorial Sloan Kettering Cancer Center.
  *
  * This library is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS
  * FOR A PARTICULAR PURPOSE. The software and documentation provided hereunder
- * is on an "as is" basis, and Memorial Sloan-Kettering Cancer Center has no
+ * is on an "as is" basis, and Memorial Sloan Kettering Cancer Center has no
  * obligations to provide maintenance, support, updates, enhancements or
- * modifications. In no event shall Memorial Sloan-Kettering Cancer Center be
+ * modifications. In no event shall Memorial Sloan Kettering Cancer Center be
  * liable to any party for direct, indirect, special, incidental or
  * consequential damages, including lost profits, arising out of the use of this
- * software and its documentation, even if Memorial Sloan-Kettering Cancer
+ * software and its documentation, even if Memorial Sloan Kettering Cancer
  * Center has been advised of the possibility of such damage.
  */
 
@@ -64,7 +64,6 @@ public class CancerStudy {
     private String pmid;
     private String citation;
     private Set<String> groups;
-    private String shortName;
     private Date importDate;
     private String referenceGenome;
     
@@ -82,7 +81,6 @@ public class CancerStudy {
         super();
         this.studyID = CancerStudy.NO_SUCH_STUDY;
         this.name = name;
-        this.shortName = cancerStudyIdentifier;
         this.description = description;
         this.cancerStudyIdentifier = cancerStudyIdentifier;
         this.typeOfCancerId = typeOfCancerId;
@@ -447,34 +445,6 @@ public class CancerStudy {
                     attrs.contains(ClinicalAttribute.DFS_STATUS);
     }
 
-    /**
-     * Check if study has fusion data 
-     * @return true if has fusion data, false when it's not
-     */
-    public boolean hasFusionData() {
-        ArrayList<GeneticProfile> geneticProfiles = DaoGeneticProfile.getAllGeneticProfiles(studyID);
-        boolean hasFusionData = false;
-        for (GeneticProfile geneticProfile : geneticProfiles) {
-            if (geneticProfile.getDatatype().equals("SV")) { // check if genetic profiles contains Structural Variant
-                                                             // data type
-                hasFusionData = true;
-                break;
-            }
-        }
-        return hasFusionData;
-    }
-
-    public String getShortName() {
-        if (shortName==null || shortName.length()==0) {
-            return cancerStudyIdentifier;
-        }
-        return shortName;
-    }
-
-    public void setShortName(String shortName) {
-        this.shortName = shortName;
-    }
-    
     public String getTypeOfCancer() throws DaoException {
         return DaoTypeOfCancer.getTypeOfCancerById(this.typeOfCancerId).getName();
     }

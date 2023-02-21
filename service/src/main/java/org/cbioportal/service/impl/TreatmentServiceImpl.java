@@ -1,5 +1,7 @@
 package org.cbioportal.service.impl;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.cbioportal.model.*;
 import org.cbioportal.persistence.TreatmentRepository;
 import org.cbioportal.service.TreatmentService;
@@ -17,10 +19,38 @@ public class TreatmentServiceImpl implements TreatmentService {
     @Autowired
     TreatmentRepository treatmentRepository;
     
+    private Pair<List<String>, List<String>> filterIds(List<String> sampleIds, List<String> studyIds, ClinicalEventKeyCode key) {
+        if (sampleIds == null || studyIds == null || sampleIds.size() != studyIds.size()) {
+            return new ImmutablePair<>(sampleIds, studyIds);
+        }
+        Set<String> studiesWithTreatments = studyIds.stream()
+            .distinct()
+            .filter(studyId -> treatmentRepository.studyIdHasTreatments(studyId, key))
+            .collect(Collectors.toSet());
+        
+        ArrayList<String> filteredSampleIds = new ArrayList<>();
+        ArrayList<String> filteredStudyIds = new ArrayList<>();
+        for (int i = 0; i < sampleIds.size(); i++) {
+            String studyId = studyIds.get(i);
+            String sampleId = sampleIds.get(i);
+            if (studiesWithTreatments.contains(studyId)) {
+                filteredSampleIds.add(sampleId);
+                filteredStudyIds.add(studyId);
+            }
+        }
+        return new ImmutablePair<>(filteredSampleIds, filteredStudyIds);
+    }
+    
     @Override
-    public List<SampleTreatmentRow> getAllSampleTreatmentRows(List<String> sampleIds, List<String> studyIds) {
-        Map<String, List<ClinicalEventSample>> samplesByPatient = treatmentRepository.getSamplesByPatientId(sampleIds, studyIds);
-        Map<String, List<Treatment>> treatmentsByPatient = treatmentRepository.getTreatmentsByPatientId(sampleIds, studyIds);
+    public List<SampleTreatmentRow> getAllSampleTreatmentRows(List<String> sampleIds, List<String> studyIds, ClinicalEventKeyCode key) {
+        Pair<List<String>, List<String>> filteredIds = filterIds(sampleIds, studyIds, key);
+        sampleIds = filteredIds.getLeft();
+        studyIds = filteredIds.getRight();
+
+        Map<String, List<ClinicalEventSample>> samplesByPatient = 
+            treatmentRepository.getSamplesByPatientId(sampleIds, studyIds);
+        Map<String, List<Treatment>> treatmentsByPatient = 
+            treatmentRepository.getTreatmentsByPatientId(sampleIds, studyIds, key);
 
         Stream<SampleTreatmentRow> rows = samplesByPatient.keySet().stream()
             .flatMap(patientId -> getSampleTreatmentRowsForPatient(patientId, samplesByPatient, treatmentsByPatient))
@@ -122,15 +152,22 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
 
     @Override
-    public List<PatientTreatmentRow> getAllPatientTreatmentRows(List<String> sampleIds, List<String> studyIds) {
-        Map<String, List<Treatment>> treatmentsByPatient = treatmentRepository.getTreatmentsByPatientId(sampleIds, studyIds);
+    public List<PatientTreatmentRow> getAllPatientTreatmentRows(
+        List<String> sampleIds, List<String> studyIds, ClinicalEventKeyCode key
+    ) {
+        Pair<List<String>, List<String>> filteredIds = filterIds(sampleIds, studyIds, key);
+        sampleIds = filteredIds.getLeft();
+        studyIds = filteredIds.getRight();
+        
+        Map<String, List<Treatment>> treatmentsByPatient = 
+            treatmentRepository.getTreatmentsByPatientId(sampleIds, studyIds, key);
         Map<String, List<ClinicalEventSample>> samplesByPatient = treatmentRepository
             .getShallowSamplesByPatientId(sampleIds, studyIds)
             .entrySet()
             .stream()
             .filter(e -> treatmentsByPatient.containsKey(e.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        Set<String> treatments = treatmentRepository.getAllUniqueTreatments(sampleIds, studyIds);
+        Set<String> treatments = treatmentRepository.getAllUniqueTreatments(sampleIds, studyIds, key);
 
         return treatments.stream()
             .map(t -> createPatientTreatmentRowForTreatment(t, treatmentsByPatient, samplesByPatient))
@@ -166,14 +203,17 @@ public class TreatmentServiceImpl implements TreatmentService {
     }
 
     @Override
-    public Boolean containsTreatmentData(List<String> studies) {
-        return treatmentRepository.getTreatmentCount(studies) > 0;
+    public Boolean containsTreatmentData(List<String> studies, ClinicalEventKeyCode key) {
+        return treatmentRepository.getTreatmentCount(studies, key.getKey()) > 0;
     }
 
     @Override
-    public Boolean containsSampleTreatmentData(List<String> studies) {
-        Integer sampleCount = treatmentRepository.getSampleCount(studies);
-        Integer treatmentCount = treatmentRepository.getTreatmentCount(studies);
+    public Boolean containsSampleTreatmentData(List<String> studyIds, ClinicalEventKeyCode key) {
+        studyIds = studyIds.stream()
+            .filter(studyId -> treatmentRepository.studyIdHasTreatments(studyId, key))
+            .collect(Collectors.toList());
+        Integer sampleCount = treatmentRepository.getSampleCount(studyIds);
+        Integer treatmentCount = treatmentRepository.getTreatmentCount(studyIds, key.getKey());
         
         return sampleCount * treatmentCount > 0;
     }

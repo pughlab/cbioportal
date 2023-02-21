@@ -31,7 +31,7 @@ skin.data_sets_footer=Data sets of TCGA studies were downloaded from Broad Fireh
 # documentation pages
 skin.documentation.baseurl=https://raw.githubusercontent.com/cBioPortal/cbioportal/master/docs/
 skin.documentation.markdown=true
-skin.documentation.faq=FAQ.md
+skin.documentation.faq=user-guide/faq.md
 skin.documentation.about=About-Us.md
 skin.documentation.news=News.md
 skin.documentation.oql=Onco-Query-Language.md
@@ -62,6 +62,8 @@ skin.blurb=The cBioPortal for Cancer Genomics provides <b>visualization</b>, <b>
 
 # setting controlling the footer
 skin.footer= | <a href="http://www.mskcc.org/mskcc/html/44.cfm">MSKCC</a> | <a href="http://cancergenome.nih.gov/">TCGA</a>
+# setting controlling listing the development channels in the site's footer section
+#skin.footer_show_dev=false
 
 # setting controlling html for the contact
 skin.login.contact_html=If you think you have received this message in error, please contact us at <a style="color:#FF0000" href="mailto:cbioportal-access@cbio.mskcc.org">cbioportal-access@cbio.mskcc.org</a>
@@ -74,12 +76,37 @@ skin.right_nav.show_data_sets=true
 skin.right_nav.show_examples=true
 skin.right_nav.show_testimonials=true
 skin.right_nav.show_whats_new=true
+#skin.right_nav.show_twitter=false
 
 # settings controlling what to show in the right navigation bar
 skin.study_view.link_text=To build your own case set, try out our enhanced Study View.
 
 # setting controlling the default setting for filtering genes in patient view
 # skin.patientview.filter_genes_profiled_all_samples=false
+
+# settings controlling the appearance of the annotation filter menu in study view and group comparison
+# skin.show_settings_menu=false
+
+# controls the appearance the logout button on a portal with user authentication
+# skin.hide_logout_button=false
+
+# controls whether namespace columns of the MAF file are immediately visible in mutation tables (default is 'false')
+# skin.mutation_table.namespace_column.show_by_default=true
+
+# controls which columns from the mutation tables are immediately visible in mutation tables
+# skin.results_view.mutation_table.columns.show_on_init=Sample Id,Protein Change,Annotation,Mutation Type,Copy #,Cosmic,# Mut in Sample
+# skin.patient_view.mutation_table.columns.show_on_init=Gene,Protein Change,Annotation,Mutation Type,Copy #,Cosmic,# Mut in Sample
+# skin.patient_view.copy_number_table.columns.show_on_init=Gene,CNA,Annotation,Cytoband,Cohort
+# skin.patient_view.structural_variant_table.columns.show_on_init=Gene 1,Gene2,Status,Annotation,Variant Class,Event Info,Connection Type
+
+# setting controlling the home page
+## enable this to show studies for which the user does not have permission (will appear greyed out and cannot be analyzed in study view or results view). 
+# skin.home_page.show_unauthorized_studies=false
+## enable this to configure a global message for the studies that are unauthorized; the message can contain placecards like {$.Owner.email} for the studies that have the information in the study tags 
+# skin.home_page.unauthorized_studies_global_message=The study is unauthorized. You need to request access.
+
+setting controlling whether Download tabs and download/copy-to-clipboard controls should be shown
+# skin.hide_download_controls=true
 
 ## enable and set this property to specify a study group to be used to identify public studies for which no specific authorization entries are needed in the `authorities` table
 # always_show_study_group=
@@ -101,7 +128,7 @@ microsoftlive.consumer.secret=
 ## SAML settings
 saml.sp.metadata.entityid=
 # change this url if behind reverse proxy that handles SSL, see docs/Authenticating-Users-via-SAML.md
-saml.sp.metadata.entityBaseURL=#{null}
+saml.sp.metadata.entitybaseurl=#{null}
 saml.idp.metadata.location=
 saml.idp.metadata.entityid=
 # saml keystore settings:
@@ -116,6 +143,10 @@ saml.idp.comm.binding.settings=defaultBinding
 # Configure the specific binding if above is specificBinding. Leave empty if defaultBinding.
 # Options: bindings:HTTP-POST, bindings:HTTP-Redirect, bindings:PAOS, profiles:holder-of-key:SSO:browser
 saml.idp.comm.binding.type=
+# If true it means that the user will be forced to re-authenticate, even if they have a valid session with the IDP
+# it's useful when you don't have control over IDP and the IDP caches user data for to long
+# causing cbioportal to CredentialsExpiredException Authentication statement is too old to be used with value <DATE>
+saml.idp.comm.binding.force-auth-n=false
 # Change this to configure your custom UserDetails parser (default: org.cbioportal.security.spring.authentication.saml.SAMLUserDetailsServiceImpl)
 saml.custom.userservice.class=org.cbioportal.security.spring.authentication.saml.SAMLUserDetailsServiceImpl
 # Change this to configure to configure a custom logout URL: (default: /login.jsp?logout_success=true)
@@ -137,6 +168,9 @@ dat.jwt.secret_key=
 #dat.oauth2.jwkUrl=<authorization-server-url>/.../certs
 #dat.oauth2.redirectUri=<cbioportal-url>/.../api/data-access-token/oauth2
 #dat.oauth2.jwtRolesPath=resource_access::cbioportal::roles
+
+# multithreading configuration
+multithread.core_pool_size=16
 
 # study view settings
 # always show studies with this group
@@ -170,10 +204,16 @@ oncokb.public_api.url=https://public.api.oncokb.org/api/v1
 # Your OncoKB Token which an be found under https://www.oncokb.org/account/settings
 oncokb.token=
 
+# Enable merging of OncoKB icons by default
+# oncokb.merge_icons_by_default=true
+
+# Enable "cBioPortal>=" driver annotation sources in the settings menu of Results View (true, false)
+show.cbioportal=true
+# Enable "COSMIC>=" driver annotation sources in the settings menu of Results View (true, false)
+show.cosmic=true
 
 # Enable Chang's hotspot list (true, false)
 show.hotspot=true
-hotspots.url=https://www.cancerhotspots.org/api/
 
 # Enable Civic variant annotation (true, false)
 show.civic=false
@@ -194,8 +234,15 @@ mycancergenome.show=true
 # Available sources: mutation_assessor
 # show.genomenexus.annotation_sources=mutation_assessor
 
+# Choose Genome Nexus default set of isoforms. Read more at
+# https://docs.cbioportal.org. (Options are uniprot or mskcc, default is mskcc)
+# genomenexus.isoform_override_source=mskcc
+
 # Enable SIGNAL column in mutations table(true, false)
 # show.signal=false
+
+# Enable NDex pathways integration (true, false)
+# show.ndex=false
 
 # igv bam linking
 igv.bam.linking=
@@ -232,7 +279,7 @@ session.service.url=
 # session.service.password=pass
 
 # disabled tabs, | delimited
-# possible values: cancer_types_summary, mutual_exclusivity, plots, mutations, co_expression, enrichments, survival, network, download, bookmark, IGV
+# possible values: cancer_types_summary, mutual_exclusivity, comparison, plots, mutations, co_expression, enrichments, survival, network, download, bookmark, IGV
 disabled_tabs=
 
 # study ids and categories to force to top of study selector
@@ -255,6 +302,7 @@ oncoprint.defaultview=patient
 oncoprint.oncokb.default=true
 oncoprint.hotspots.default=true
 # oncoprint.hide_vus.default=true
+# oncoprint.clinical_tracks.config_json=classpath:/oncoprint-default-tracks.json
 
 # Custom gene sets
 # querypage.setsofgenes.location=file:/<path>
@@ -265,8 +313,20 @@ oncoprint.hotspots.default=true
 persistence.cache_type=no-cache
 # Enable cache statistics endpoint for cache monitoring
 #cache.statistics_endpoint_enabled=false
+# Turn cache management endpoint on or off (default)
+# cache.endpoint.enabled=true
+# API key for access to cache management endpoint
+# cache.endpoint.api-key=fd15f1ae-66f2-4b8a-8d54-fb899b03557e
+# Externalize the study data used for user authorization evaluation to Spring-managed caches such as EHCache or Redis.
+# Enabling this might simplify cache-invalidation strategies (via /api/cache endpoint) because it allows for invalidation
+# a central caching solution shared among cBioPortal containers in a single instance. It comes at the cost of extra calls
+# to the caching provider. Default is 'false' meaning that cBioPortal will use a faster local HashMap-based cache for fast
+# lookup of sample/patient/profile to cancer study relationships.
+#cache.cache-map-utils.spring-managed=false
 
 # Redis properties
+# Unique name for each portal instance, used for distinguishing caches
+#redis.name=
 #redis.leader_address=
 #redis.follower_address=
 #redis.database=
@@ -312,6 +372,11 @@ persistence.cache_type=no-cache
 #hrrs.logging.filepath=
 #hrrs.enable.logging=false
 
+# enable/disable aspectj logging
+# if active, all enter/exits to methods in web, service-impl,
+# and mybatis packages are logged 
+#aspect.enable.logging=false
+
 # ensembl URL template for transcript lookup in Mutations tab. Default is http://grch37.ensembl.org/homo_sapiens/Transcript/Summary?t=<%= transcriptId %>
 #ensembl.transcript_url=http://ensembl.org/homo_sapiens/Transcript/Summary?t=<%= transcriptId %>
 
@@ -325,8 +390,17 @@ persistence.cache_type=no-cache
 # This limit is enforced on the frontend.
 # query_product_limit=1000000
 
+# Limit the size of samples in clinical tab in study view page. clinical attribute count * sample count < clinical_attribute_product_limit
+# This limit is enforced on the frontend.
+# clinical_attribute_product_limit=6500000
+
 # Enable gsva to query
 # skin.show_gsva=true
+# Set default thresholds for geneset hierarchy
+# skin.geneset_hierarchy.default_gsva_score=0.5
+# skin.geneset_hierarchy.default_p_value=0.05
+# Collapse the tree widget of the gsva hierarchy dialog on init
+# skin.geneset_hierarchy.collapse_by_default=true
 
 # Compress some particularly large request bodies. enable_request_body_gzip_compression enables the feature, and
 # request_gzip_body_size_bytes sets the maximum allowable uncompressed request body size in bytes. Requests larger than
@@ -337,3 +411,9 @@ persistence.cache_type=no-cache
 # Installation map URL for installation map iframes. 
 # If blank or commented out, no map will be shown and that page will be hidden.
 # installation_map_url=https://installationmap.netlify.app/
+
+# Feature flag for treatment groups
+# enable_treatment_groups=false
+
+# Set comparison categorical "NA" value (not case sensitive), separated by "|"
+# comparison.categorical_na_values=NA|unknown

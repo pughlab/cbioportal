@@ -2,7 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="org.cbioportal.persistence.mybatis.MolecularDataMapper">
-    
 
     <sql id="whereInMultipleMolecularProfiles">
         <where>
@@ -89,6 +88,19 @@
                     #{item}
                 </foreach>
             </if>
+        </where>
+    </select>
+
+    <!-- This routine is an abbreviated copy of getGeneMolecularAlterationsIter above. The two should be kept in sync. -->
+    <select id="getGeneMolecularAlterationsIterFast" resultType="org.cbioportal.model.GeneMolecularAlteration">
+        SELECT
+        gene.ENTREZ_GENE_ID AS entrezGeneId,
+        genetic_alteration.VALUES AS "values"
+        FROM genetic_alteration
+        INNER JOIN genetic_profile ON genetic_alteration.GENETIC_PROFILE_ID = genetic_profile.GENETIC_PROFILE_ID
+        INNER JOIN gene ON genetic_alteration.GENETIC_ENTITY_ID = gene.GENETIC_ENTITY_ID
+        <where>
+            genetic_profile.STABLE_ID = #{molecularProfileId}
         </where>
     </select>
 

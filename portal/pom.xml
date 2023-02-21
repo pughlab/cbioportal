@@ -15,6 +15,16 @@
   <url>http://maven.apache.org</url>
 
   <dependencies>
+      <dependency>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-classic</artifactId>
+          <version>1.2.10</version>
+      </dependency>
+      <dependency>
+          <groupId>ch.qos.logback</groupId>
+          <artifactId>logback-core</artifactId>
+          <version>1.2.10</version>
+      </dependency>
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-taglibs</artifactId>
@@ -103,6 +113,7 @@
           <warName>${final.war.name}</warName>
           <webappDirectory>${project.build.directory}/portal</webappDirectory>
           <filteringDeploymentDescriptors>true</filteringDeploymentDescriptors>
+          <escapeString>\</escapeString>
           <webResources>
             <resource>
               <directory>${project.parent.basedir}/persistence/persistence-connections/src/main/resources</directory>
@@ -172,7 +183,7 @@
                   </includes>
                   <excludes>
                     <exclude>**/portal.properties.*</exclude>
-                    <exclude>**/log4j.properties.*</exclude>
+                    <exclude>**/logback.xml.*</exclude>
                     <exclude>**/maven.properties.*</exclude>
                     <exclude>**/git.properties.*</exclude>
                     <exclude>**/*.EXAMPLE</exclude>
