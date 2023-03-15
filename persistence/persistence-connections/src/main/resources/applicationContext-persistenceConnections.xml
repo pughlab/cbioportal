@@ -70,6 +70,15 @@
             <property name="mapperLocations" value="classpath*:org/cbioportal/persistence/mybatis/**/*.xml" />
             <property name="databaseIdProvider" ref="databaseIdProvider"/>
         </bean>
+        <bean id="columnstoreSqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+            <property name="dataSource" ref="columnstoreDataSource" />
+            <property name="typeAliasesPackage" value="org.mskcc.cbio.portal.model" />
+            <property name="typeHandlersPackage" value="org.cbioportal.persistence.mybatis.typehandler" />
+            <property name="objectFactory" ref="customObjectFactory" />
+            <!-- mapper locations is set here to support interdependency between mappers without -->
+            <!-- having to autowire repositories into java classes that do not make direct use of them -->
+            <property name="mapperLocations" value="classpath*:org/cbioportal/persistence/mybatis-columnstore/*.xml" />
+        </bean>
     </beans>
   
     <beans profile="dbcp">
@@ -81,6 +90,8 @@
                 <list><ref bean="businessDataSource"/></list>
             </property>
         </bean>
+        <bean id="columnstoreDataSource" destroy-method="close"
+            class="ru.yandex.clickhouse.ClickHouseDriver" />
     </beans>
 
     <beans profile="jndi">
