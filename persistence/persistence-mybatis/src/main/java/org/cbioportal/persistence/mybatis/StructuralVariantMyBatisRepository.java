@@ -23,8 +23,7 @@
 
 package org.cbioportal.persistence.mybatis;
 
-import org.cbioportal.model.GeneFilterQuery;
-import org.cbioportal.model.StructuralVariantFilterQuery;
+import org.cbioportal.webparam.GeneFilterQuery;
 import org.cbioportal.model.StructuralVariant;
 import org.cbioportal.model.StructuralVariantQuery;
 import org.cbioportal.persistence.StructuralVariantRepository;
@@ -74,21 +73,6 @@ public class StructuralVariantMyBatisRepository implements StructuralVariantRepo
     public List<StructuralVariant> fetchStructuralVariantsByGeneQueries(List<String>  molecularProfileIds,
                                                                         List<String> sampleIds,
                                                                         List<GeneFilterQuery> geneQueries) {
-        if (geneQueries == null || geneQueries.isEmpty()
-            || molecularProfileIds == null || molecularProfileIds.isEmpty()) {
-            return new ArrayList<>();
-        }
         return structuralVariantMapper.fetchStructuralVariantsByGeneQueries(molecularProfileIds, sampleIds, geneQueries);
-    }
-
-    @Override
-    public List<StructuralVariant> fetchStructuralVariantsByStructVarQueries(List<String> molecularProfileIds,
-                                                                             List<String> sampleIds,
-                                                                             List<StructuralVariantFilterQuery> structVarQueries) {
-        if (structVarQueries == null || structVarQueries.isEmpty()
-            || molecularProfileIds == null || molecularProfileIds.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return structuralVariantMapper.fetchStructuralVariantsByStructVarQueries(molecularProfileIds, sampleIds, structVarQueries);
     }
 }

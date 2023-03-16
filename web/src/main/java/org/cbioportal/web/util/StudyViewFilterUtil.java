@@ -2,26 +2,24 @@ package org.cbioportal.web.util;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.cbioportal.model.Binnable;
+import org.cbioportal.model.ClinicalData;
 import org.cbioportal.model.ClinicalDataBin;
 import org.cbioportal.model.ClinicalDataCount;
 import org.cbioportal.model.ClinicalDataCountItem;
 import org.cbioportal.model.DataBin;
-import org.cbioportal.model.Gene;
-import org.cbioportal.model.GeneFilterQuery;
 import org.cbioportal.model.Patient;
 import org.cbioportal.model.SampleList;
-import org.cbioportal.model.StructuralVariantFilterQuery;
-import org.cbioportal.model.StructuralVariantSpecialValue;
-import org.cbioportal.service.GeneService;
-import org.cbioportal.service.util.CustomDataSession;
-import org.cbioportal.service.util.CustomDataValue;
 import org.cbioportal.service.util.MolecularProfileUtil;
-import org.cbioportal.web.parameter.*;
+import org.cbioportal.webparam.ClinicalDataBinFilter;
+import org.cbioportal.webparam.ClinicalDataFilter;
+import org.cbioportal.webparam.CustomDataSession;
+import org.cbioportal.webparam.CustomDataValue;
+import org.cbioportal.webparam.SampleIdentifier;
+import org.cbioportal.webparam.StudyViewFilter;
+import org.cbioportal.webparam.DataFilterValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -29,15 +27,8 @@ import org.springframework.stereotype.Component;
 public class StudyViewFilterUtil {
     @Autowired
     private MolecularProfileUtil molecularProfileUtil;
-
-    @Autowired
-    private GeneService geneService;
     
-    public void extractStudyAndSampleIds(
-        List<SampleIdentifier> sampleIdentifiers, 
-        List<String> studyIds, 
-        List<String> sampleIds
-    ) {
+    public void extractStudyAndSampleIds(List<SampleIdentifier> sampleIdentifiers, List<String> studyIds, List<String> sampleIds) {
         for (SampleIdentifier sampleIdentifier : sampleIdentifiers) {
             studyIds.add(sampleIdentifier.getStudyId());
             sampleIds.add(sampleIdentifier.getSampleId());
@@ -45,27 +36,19 @@ public class StudyViewFilterUtil {
     }
 
     public void removeSelfFromFilter(String attributeId, StudyViewFilter studyViewFilter) {
-        if (studyViewFilter != null && studyViewFilter.getClinicalDataFilters() != null) {
+        if (studyViewFilter!= null && studyViewFilter.getClinicalDataFilters() != null) {
             studyViewFilter.getClinicalDataFilters().removeIf(f -> f.getAttributeId().equals(attributeId));
-        }
-    }
-    
-    public void removeSelfFromGenomicDataFilter(String hugoGeneSymbol, String profileType, StudyViewFilter studyViewFilter) {
-        if (studyViewFilter != null && studyViewFilter.getGenomicDataFilters() != null) {
-            studyViewFilter.getGenomicDataFilters().removeIf(f -> 
-                f.getHugoGeneSymbol().equals(hugoGeneSymbol) && f.getProfileType().equals(profileType)
-            );
         }
     }
 
     public void removeSelfFromGenericAssayFilter(String stableId, StudyViewFilter studyViewFilter) {
-        if (studyViewFilter != null && studyViewFilter.getGenericAssayDataFilters() != null) {
+        if (studyViewFilter!= null && studyViewFilter.getGenericAssayDataFilters() != null) {
             studyViewFilter.getGenericAssayDataFilters().removeIf(f -> f.getStableId().equals(stableId));
         }
     }
 
     public void removeSelfCustomDataFromFilter(String attributeId, StudyViewFilter studyViewFilter) {
-        if (studyViewFilter != null && studyViewFilter.getCustomDataFilters() != null) {
+        if (studyViewFilter!= null && studyViewFilter.getCustomDataFilters() != null) {
             studyViewFilter.getCustomDataFilters().removeIf(f -> f.getAttributeId().equals(attributeId));
         }
     }
@@ -105,7 +88,7 @@ public class StudyViewFilterUtil {
     }
 
     public Integer getFilteredCountByDataEquality(List<ClinicalDataFilter> attributes, MultiKeyMap clinicalDataMap,
-            String entityId, String studyId, Boolean negateFilters) {
+                                                  String entityId, String studyId, Boolean negateFilters) {
         Integer count = 0;
         for (ClinicalDataFilter s : attributes) {
             List<String> filteredValues = s.getValues()
@@ -125,7 +108,7 @@ public class StudyViewFilterUtil {
         return count;
     }
 
-    public List<ClinicalDataCountItem> getClinicalDataCountsFromCustomData(Collection<CustomDataSession> customDataSessions,
+    public List<ClinicalDataCountItem> getClinicalDataCountsFromCustomData(List<CustomDataSession> customDataSessions,
             Map<String, SampleIdentifier> filteredSamplesMap, List<Patient> patients) {
         int totalSamplesCount = filteredSamplesMap.keySet().size();
         int totalPatientsCount = patients.size();
@@ -133,9 +116,10 @@ public class StudyViewFilterUtil {
         return customDataSessions.stream().map(customDataSession -> {
 
             Map<String, List<CustomDataValue>> groupedDatabyValue = customDataSession.getData().getData().stream()
-                .filter(datum -> filteredSamplesMap
-                    .containsKey(getCaseUniqueKey(datum.getStudyId(), datum.getSampleId()))
-                ).collect(Collectors.groupingBy(CustomDataValue::getValue));
+                    .filter(datum -> {
+                        return filteredSamplesMap
+                                .containsKey(getCaseUniqueKey(datum.getStudyId(), datum.getSampleId()));
+                    }).collect(Collectors.groupingBy(CustomDataValue::getValue));
 
             ClinicalDataCountItem clinicalDataCountItem = new ClinicalDataCountItem();
             clinicalDataCountItem.setAttributeId(customDataSession.getId());
@@ -209,10 +193,10 @@ public class StudyViewFilterUtil {
         );
     }
     
-    public List<Binnable> filterClinicalData(
-        List<Binnable> unfilteredClinicalDataForSamples,
-        List<Binnable> unfilteredClinicalDataForPatients,
-        List<Binnable> unfilteredClinicalDataForConflictingPatientAttributes,
+    public List<ClinicalData> filterClinicalData(
+        List<ClinicalData> unfilteredClinicalDataForSamples,
+        List<ClinicalData> unfilteredClinicalDataForPatients,
+        List<ClinicalData> unfilteredClinicalDataForConflictingPatientAttributes,
         List<String> studyIds,
         List<String> sampleIds,
         List<String> studyIdsOfPatients,
@@ -221,7 +205,7 @@ public class StudyViewFilterUtil {
         List<String> patientAttributeIds,
         List<String> conflictingPatientAttributes
     ) {
-        List<Binnable> combinedResult = new ArrayList<>();
+        List<ClinicalData> combinedResult = new ArrayList<>();
         
         Map<String, String> patientIdToStudyId = null;
             
@@ -271,80 +255,9 @@ public class StudyViewFilterUtil {
 
         return combinedResult;
     }
-
-    public List<GeneFilterQuery> cleanQueryGeneIds(List<GeneFilterQuery> geneQueries) {
-        List<String> hugoGeneSymbols = geneQueries
-            .stream()
-            .map(GeneFilterQuery::getHugoGeneSymbol)
-            .collect(Collectors.toList());
-
-        Map<String, Integer> symbolToEntrezGeneId = getStringIntegerMap(hugoGeneSymbols);
-
-        geneQueries.removeIf(
-            q -> !symbolToEntrezGeneId.containsKey(q.getHugoGeneSymbol())
-        );
-
-        geneQueries.stream().forEach(
-            q -> q.setEntrezGeneId(symbolToEntrezGeneId.get(q.getHugoGeneSymbol()))
-        );
-
-        return geneQueries;
-    }
-
-    private Map<String, Integer> getStringIntegerMap(List<String> hugoGeneSymbols) {
-        Map<String, Integer> symbolToEntrezGeneId = geneService
-            .fetchGenes(new ArrayList<>(hugoGeneSymbols),
-                GeneIdType.HUGO_GENE_SYMBOL.name(), Projection.SUMMARY.name())
-            .stream()
-            .collect(Collectors.toMap(Gene::getHugoGeneSymbol, Gene::getEntrezGeneId));
-        return symbolToEntrezGeneId;
-    }
-
-    public List<StructuralVariantFilterQuery> resolveEntrezGeneIds(List<StructuralVariantFilterQuery> structVarQueries) {
-
-        List<String> hugoGeneSymbols = structVarQueries
-            .stream()
-            .flatMap(q -> Stream.of(q.getGene1Query(), q.getGene2Query()))
-            .filter(structVarIdentifier -> structVarIdentifier.getHugoSymbol() != null)
-            .map(structVarIdentifier -> structVarIdentifier.getHugoSymbol())
-            .collect(Collectors.toList());
-
-        Map<String, Integer> symbolToEntrezGeneId = getStringIntegerMap(hugoGeneSymbols);
-
-        // Add Entrez gene ids to the queries.
-        structVarQueries.forEach(structVarQuery -> {
-            structVarQuery.getGene1Query().setEntrezId(
-                symbolToEntrezGeneId.getOrDefault(structVarQuery.getGene1Query().getHugoSymbol(), null)
-            );
-            structVarQuery.getGene2Query().setEntrezId(
-                symbolToEntrezGeneId.getOrDefault(structVarQuery.getGene2Query().getHugoSymbol(), null)
-            );
-        });
-
-        // Remove any genes where the Entrez gene id is needed, but translation failed.
-        structVarQueries.removeIf(
-            q ->   (q.getGene1Query().getSpecialValue() != StructuralVariantSpecialValue.NO_GENE
-                && q.getGene1Query().getSpecialValue() != StructuralVariantSpecialValue.ANY_GENE
-                && q.getGene1Query().getEntrezId() == null)
-                || (q.getGene2Query().getSpecialValue() != StructuralVariantSpecialValue.NO_GENE
-                && q.getGene2Query().getSpecialValue() != StructuralVariantSpecialValue.ANY_GENE
-                && q.getGene2Query().getEntrezId() == null)
-        );
-
-        return structVarQueries;
-    }
-
-    private Map<String, Integer> getHugoToEntrezQueryMap(List<String> hugoGeneSymbols) {
-        Map<String, Integer> symbolToEntrezGeneId = geneService
-            .fetchGenes(new ArrayList<>(hugoGeneSymbols),
-                GeneIdType.HUGO_GENE_SYMBOL.name(), Projection.SUMMARY.name())
-            .stream()
-            .collect(Collectors.toMap(Gene::getHugoGeneSymbol, Gene::getEntrezGeneId));
-        return symbolToEntrezGeneId;
-    }
-
-    private List<Binnable> filterClinicalDataByStudyAndSampleAndAttribute(
-        List<Binnable> clinicalData,
+    
+    private List<ClinicalData> filterClinicalDataByStudyAndSampleAndAttribute(
+        List<ClinicalData> clinicalData,
         Map<String, String> sampleToStudyId,
         Map<String, Boolean> attributeIdLookup
     ) {
@@ -357,8 +270,8 @@ public class StudyViewFilterUtil {
             .collect(Collectors.toList());
     }
 
-    private List<Binnable> filterClinicalDataByStudyAndPatientAndAttribute(
-        List<Binnable> clinicalData,
+    private List<ClinicalData> filterClinicalDataByStudyAndPatientAndAttribute(
+        List<ClinicalData> clinicalData,
         Map<String, String> patientToStudyId,
         Map<String, Boolean> attributeIdLookup
     ) {
@@ -388,16 +301,15 @@ public class StudyViewFilterUtil {
         return caseToStudy;
     }
 
-    private String generateSampleToStudyKey(Binnable clinicalData) {
+    private String generateSampleToStudyKey(ClinicalData clinicalData) {
         return generateCaseToStudyKey(clinicalData.getStudyId(), clinicalData.getSampleId());
     }
     
-    private String generatePatientToStudyKey(Binnable clinicalData) {
+    private String generatePatientToStudyKey(ClinicalData clinicalData) {
         return generateCaseToStudyKey(clinicalData.getStudyId(), clinicalData.getPatientId());
     }
     
     private String generateCaseToStudyKey(String studyId, String caseId) {
         return studyId + ":" + caseId;
     }
-    
 }

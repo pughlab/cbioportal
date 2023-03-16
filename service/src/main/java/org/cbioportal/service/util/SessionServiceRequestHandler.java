@@ -1,10 +1,15 @@
-package org.cbioportal.service.util;
+package org.cbioportal.web.util;
 
 import java.nio.charset.Charset;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.cbioportal.session_service.domain.Session;
 import org.cbioportal.session_service.domain.SessionType;
+import org.cbioportal.webparam.CustomDataSession;
+import org.cbioportal.webparam.CustomGeneList;
+import org.cbioportal.webparam.PageSettings;
+import org.cbioportal.webparam.VirtualStudy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +17,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class SessionServiceRequestHandler {
@@ -48,16 +56,32 @@ public class SessionServiceRequestHandler {
         };
     }
 
-    public String getSessionDataJson(SessionType type, String id) throws Exception {
+    public Session getSession(SessionType type, String id) throws Exception {
 
         RestTemplate restTemplate = new RestTemplate();
 
         // add basic authentication in header
-        HttpEntity<String> headers = new HttpEntity<>(getHttpHeaders());
+        HttpEntity<String> headers = new HttpEntity<String>(getHttpHeaders());
         ResponseEntity<String> responseEntity = restTemplate.exchange(sessionServiceURL + type + "/" + id,
                 HttpMethod.GET, headers, String.class);
 
-        return responseEntity.getBody();
+        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        Session session;
+
+        if (type.equals(SessionType.virtual_study) || type.equals(SessionType.group)) {
+            session = mapper.readValue(responseEntity.getBody(), VirtualStudy.class);
+        } else if (type.equals(SessionType.settings)) {
+            session = mapper.readValue(responseEntity.getBody(), PageSettings.class);
+        } else if (type.equals(SessionType.custom_data)) {
+            session = mapper.readValue(responseEntity.getBody(), CustomDataSession.class);
+        } else if (type.equals(SessionType.custom_gene_list)) {
+            session = mapper.readValue(responseEntity.getBody(), CustomGeneList.class);
+        } else {
+            session = mapper.readValue(responseEntity.getBody(), Session.class);
+        }
+
+        return session;
     }
 
 }

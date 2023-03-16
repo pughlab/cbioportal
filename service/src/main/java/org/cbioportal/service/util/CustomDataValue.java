@@ -1,10 +1,17 @@
+<<<<<<<< HEAD:service/src/main/java/org/cbioportal/service/util/CustomDataValue.java
 package org.cbioportal.service.util;
 
 import java.io.Serializable;
 
 import javax.validation.constraints.NotNull;
+========
+package org.cbioportal.webparam;
+>>>>>>>> f4546d7e88 (Move StudyViewFilter to webparams modules):webparam/src/main/java/org/cbioportal/webparam/CustomDataValue.java
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import javax.validation.constraints.NotNull;
+import java.io.Serializable;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CustomDataValue implements Serializable {

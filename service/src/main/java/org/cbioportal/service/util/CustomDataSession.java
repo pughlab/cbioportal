@@ -1,3 +1,4 @@
+<<<<<<<< HEAD:service/src/main/java/org/cbioportal/service/util/CustomDataSession.java
 package org.cbioportal.service.util;
 
 import java.io.IOException;
@@ -6,10 +7,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.cbioportal.session_service.domain.Session;
 import org.cbioportal.session_service.domain.SessionType;
+========
+package org.cbioportal.webparam;
+>>>>>>>> f4546d7e88 (Move StudyViewFilter to webparams modules):webparam/src/main/java/org/cbioportal/webparam/CustomDataSession.java
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.cbioportal.session_service.domain.Session;
+import org.cbioportal.session_service.domain.SessionType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CustomDataSession extends Session {

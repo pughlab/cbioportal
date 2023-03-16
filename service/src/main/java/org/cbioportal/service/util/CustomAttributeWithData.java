@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:service/src/main/java/org/cbioportal/service/util/CustomAttributeWithData.java
 package org.cbioportal.service.util;
+========
+package org.cbioportal.webparam;
+>>>>>>>> f4546d7e88 (Move StudyViewFilter to webparams modules):webparam/src/main/java/org/cbioportal/webparam/CustomAttributeWithData.java
 
 import java.io.Serializable;
 import java.util.Arrays;

@@ -8,12 +8,22 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.Size;
 
 import com.google.common.collect.ImmutableMap;
-import org.cbioportal.service.util.CustomAttributeWithData;
-import org.cbioportal.service.util.CustomDataSession;
+import org.cbioportal.webparam.CustomAttributeWithData;
+import org.cbioportal.webparam.CustomDataSession;
+import org.cbioportal.webparam.CustomGeneList;
+import org.cbioportal.webparam.CustomGeneListData;
+import org.cbioportal.webparam.PageSettings;
+import org.cbioportal.webparam.PageSettingsData;
+import org.cbioportal.webparam.PageSettingsIdentifier;
+import org.cbioportal.webparam.PagingConstants;
+import org.cbioportal.webparam.ResultsPageSettings;
+import org.cbioportal.webparam.SessionPage;
+import org.cbioportal.webparam.StudyPageSettings;
+import org.cbioportal.webparam.VirtualStudy;
+import org.cbioportal.webparam.VirtualStudyData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.cbioportal.web.parameter.*;
-import org.cbioportal.service.util.SessionServiceRequestHandler;
+import org.cbioportal.web.util.SessionServiceRequestHandler;
 import org.cbioportal.session_service.domain.Session;
 import org.cbioportal.session_service.domain.SessionType;
 import org.json.simple.JSONObject;
@@ -49,9 +59,6 @@ public class SessionServiceController {
     
     @Autowired
     SessionServiceRequestHandler sessionServiceRequestHandler;
-
-    @Autowired
-    private ObjectMapper sessionServiceObjectMapper;
 
     @Value("${session.service.url:}")
     private String sessionServiceURL;
@@ -111,9 +118,11 @@ public class SessionServiceController {
     ) {
         try {
             HttpEntity<?> httpEntity;
+            ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                    false);
             if (type.equals(SessionType.virtual_study) || type.equals(SessionType.group)) {
                 // JSON from file to Object
-                VirtualStudyData virtualStudyData = sessionServiceObjectMapper.readValue(body.toString(), VirtualStudyData.class);
+                VirtualStudyData virtualStudyData = mapper.readValue(body.toString(), VirtualStudyData.class);
 
                 if (isAuthorized()) {
                     virtualStudyData.setOwner(userName());
@@ -132,7 +141,7 @@ public class SessionServiceController {
                 Class<? extends PageSettingsData> pageDataClass = pageToSettingsDataClass.get(
                     SessionPage.valueOf((String) body.get("page"))
                 );
-                PageSettingsData pageSettings = sessionServiceObjectMapper.readValue(
+                PageSettingsData pageSettings = mapper.readValue(
                     body.toString(),
                     pageDataClass
                 );
@@ -141,7 +150,7 @@ public class SessionServiceController {
 
             } else if(type.equals(SessionType.custom_data)) {
                 // JSON from file to Object
-                CustomAttributeWithData customData = sessionServiceObjectMapper.readValue(body.toString(), CustomAttributeWithData.class);
+                CustomAttributeWithData customData = mapper.readValue(body.toString(), CustomAttributeWithData.class);
 
                 if (isAuthorized()) {
                     customData.setOwner(userName());
@@ -154,7 +163,7 @@ public class SessionServiceController {
                 if (!(isAuthorized())) {
                      return new ResponseEntity<>(HttpStatus.SERVICE_UNAVAILABLE);
                 }
-                CustomGeneListData customGeneListData = sessionServiceObjectMapper.readValue(body.toString(), CustomGeneListData.class);
+                CustomGeneListData customGeneListData = mapper.readValue(body.toString(), CustomGeneListData.class);
                 customGeneListData.setUsers(Collections.singleton(userName()));
                 httpEntity = new HttpEntity<>(customGeneListData, sessionServiceRequestHandler.getHttpHeaders());
             } else {
@@ -180,25 +189,9 @@ public class SessionServiceController {
     public ResponseEntity<Session> getSession(@PathVariable SessionType type, @PathVariable String id) {
 
         try {
-            String sessionDataJson = sessionServiceRequestHandler.getSessionDataJson(type, id);
-            Session session;
-            switch (type) {
-                case virtual_study:
-                    session = sessionServiceObjectMapper.readValue(sessionDataJson, VirtualStudy.class);
-                    break;
-                case settings:
-                    session = sessionServiceObjectMapper.readValue(sessionDataJson, PageSettings.class);
-                    break;
-                case custom_data:
-                    session = sessionServiceObjectMapper.readValue(sessionDataJson, CustomDataSession.class);
-                    break;
-                case custom_gene_list:
-                    session = sessionServiceObjectMapper.readValue(sessionDataJson, CustomGeneList.class);
-                    break;
-                default:
-                    session = sessionServiceObjectMapper.readValue(sessionDataJson, Session.class);
-            }
+            Session session = sessionServiceRequestHandler.getSession(type, id);
             return new ResponseEntity<>(session, HttpStatus.OK);
+
         } catch (Exception exception) {
             LOG.error("Error occurred", exception);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -251,26 +244,28 @@ public class SessionServiceController {
             @PathVariable Operation operation, HttpServletResponse response) throws IOException {
 
         if (sessionServiceRequestHandler.isSessionServiceEnabled() && isAuthorized()) {
+            ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                    false);
             HttpEntity<?> httpEntity;
             if (type.equals(SessionType.custom_data)) {
-                String virtualStudyStr = sessionServiceObjectMapper.writeValueAsString(getSession(type, id).getBody());
-                CustomDataSession customDataSession = sessionServiceObjectMapper.readValue(virtualStudyStr, CustomDataSession.class);
+                String virtualStudyStr = mapper.writeValueAsString(getSession(type, id).getBody());
+                CustomDataSession customDataSession = mapper.readValue(virtualStudyStr, CustomDataSession.class);
                 CustomAttributeWithData customAttributeWithData = customDataSession.getData();
                 Set<String> users = customAttributeWithData.getUsers();
                 updateUserList(operation, users);
                 customAttributeWithData.setUsers(users);
                 httpEntity = new HttpEntity<>(customAttributeWithData, sessionServiceRequestHandler.getHttpHeaders());
              } else if (type.equals(SessionType.custom_gene_list)) {
-                String customGeneListStr = sessionServiceObjectMapper.writeValueAsString(getSession(type, id).getBody());
-                CustomGeneList customGeneList = sessionServiceObjectMapper.readValue(customGeneListStr, CustomGeneList.class);
+                String customGeneListStr = mapper.writeValueAsString(getSession(type, id).getBody());
+                CustomGeneList customGeneList = mapper.readValue(customGeneListStr, CustomGeneList.class);
                 CustomGeneListData customGeneListData = customGeneList.getData();
                 Set<String> users = customGeneListData.getUsers();
                 updateUserList(operation, users);
                 customGeneListData.setUsers(users);
                 httpEntity = new HttpEntity<>(customGeneListData, sessionServiceRequestHandler.getHttpHeaders());                
              } else {
-                String virtualStudyStr = sessionServiceObjectMapper.writeValueAsString(getSession(type, id).getBody());
-                VirtualStudy virtualStudy = sessionServiceObjectMapper.readValue(virtualStudyStr, VirtualStudy.class);
+                String virtualStudyStr = mapper.writeValueAsString(getSession(type, id).getBody());
+                VirtualStudy virtualStudy = mapper.readValue(virtualStudyStr, VirtualStudy.class);
                 VirtualStudyData virtualStudyData = virtualStudy.getData();
                 Set<String> users = virtualStudyData.getUsers();
                 updateUserList(operation, users);
