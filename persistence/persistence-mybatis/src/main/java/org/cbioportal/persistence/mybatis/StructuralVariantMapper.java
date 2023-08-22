@@ -27,7 +27,6 @@ import java.util.List;
 
 import org.cbioportal.model.StructuralVariant;
 import org.cbioportal.model.StructuralVariantQuery;
-import org.cbioportal.webparam.GeneFilterQuery;
 
 public interface StructuralVariantMapper {
 

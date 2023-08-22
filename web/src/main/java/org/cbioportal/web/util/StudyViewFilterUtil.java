@@ -13,13 +13,7 @@ import org.cbioportal.model.DataBin;
 import org.cbioportal.model.Patient;
 import org.cbioportal.model.SampleList;
 import org.cbioportal.service.util.MolecularProfileUtil;
-import org.cbioportal.webparam.ClinicalDataBinFilter;
-import org.cbioportal.webparam.ClinicalDataFilter;
-import org.cbioportal.webparam.CustomDataSession;
-import org.cbioportal.webparam.CustomDataValue;
-import org.cbioportal.webparam.SampleIdentifier;
-import org.cbioportal.webparam.StudyViewFilter;
-import org.cbioportal.webparam.DataFilterValue;
+import org.cbioportal.web.parameter.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -88,7 +82,7 @@ public class StudyViewFilterUtil {
     }
 
     public Integer getFilteredCountByDataEquality(List<ClinicalDataFilter> attributes, MultiKeyMap clinicalDataMap,
-                                                  String entityId, String studyId, Boolean negateFilters) {
+            String entityId, String studyId, Boolean negateFilters) {
         Integer count = 0;
         for (ClinicalDataFilter s : attributes) {
             List<String> filteredValues = s.getValues()
